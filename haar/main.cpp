@@ -1,16 +1,13 @@
 #include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
-#include "textdetection.h"
+#include "textdetection_haar.h"
 #include <iostream>
 #include <stdio.h>
 #include <Windows.h>
 
 using namespace std;
 using namespace cv;
-
-// Remove iterator checking
-#define _ITERATOR_DEBUG_LEVEL 0
 
 /** Function Headers */
 void detectAndDisplay( Mat frame, std::string imageName );
@@ -25,25 +22,25 @@ string window_name = "Capture - Face detection";
 RNG rng(12345);
 
 Point GetFacePoint(Rect &faces, bool bottomLeft);
-Point GetBodyPoint(Rect &faces, bool bottomLeft);
+Point GetBodyPoint(Rect &faces, Mat inputImage, bool bottomLeft);
 void RemoveAboveAndBelowDetections(std::vector<Rect> &faces);
 
 /** @function main */
 int main( int argc, const char** argv )
 {
-	std::string imagePath = argv[1];
-	Mat image;
-	char input;
-	//-- 1. Load the cascades
-	if( !face_cascade.load( face_cascade_name ) ){ printf("--(!)Error loading\n"); return -1; };
-	if( !profile_cascade.load( profile_cascade_name ) ){ printf("--(!)Error loading\n"); return -1; };
-
-	//-- 2. check if argument provided
+	//-- 1. check if argument provided
 	if (argc != 2)
 	{
 		cout << "Usage: haar <imagetodisplay" << endl;
 		return -1;
 	}
+
+	std::string imagePath = argv[1];
+	Mat image;
+	char input;
+	//-- 2. Load the cascades
+	if( !face_cascade.load( face_cascade_name ) ){ printf("--(!)Error loading\n"); return -1; };
+	if( !profile_cascade.load( profile_cascade_name ) ){ printf("--(!)Error loading\n"); return -1; };
 
 	//-- 3. load the image from argument 1
 	image = imread(imagePath, CV_LOAD_IMAGE_COLOR);
@@ -66,9 +63,9 @@ int main( int argc, const char** argv )
 /** @function detectAndDisplay */
 void detectAndDisplay( Mat image, std::string imageName )
 {
-	std::string stepsDir = "StepsOutput";
+	std::string stepsDir = "C:\\OCR\\StepsOutput";
 
-	CreateDirectory(L"StepsOutput", NULL);
+	CreateDirectory(L"C:\\OCR\\StepsOutput", NULL);
 
 	std::vector<Rect> faces;
 	std::vector<Rect> profileFaces;
@@ -98,32 +95,30 @@ void detectAndDisplay( Mat image, std::string imageName )
 		rectangle(image, facePoint1, facePoint2, Scalar( 255, 0, 0 ), 5);
 
 		// Draw box around body
-		Point bodyPoint1 = GetBodyPoint(faces[i], true);
-		Point bodyPoint2 = GetBodyPoint(faces[i], false);
+		Point bodyPoint1 = GetBodyPoint(faces[i], frame_gray, true);
+		Point bodyPoint2 = GetBodyPoint(faces[i], frame_gray, false);
 
-		rectangle(image, bodyPoint1, bodyPoint2, Scalar( 105,242,18 ), 5);
-
-		//cvSetImageROI(image, cvRect(bodyPoint1.x, bodyPoint1.y, bodyPoint2.x - bodyPoint1.x, bodyPoint1.y - bodyPoint2.y));
-		//IplImage *regionOfInterest = cvCreateImage(cvGetSize(cv::Range(bodyPoint1.x, bodyPoint1.y), cv::Range(bodyPoint2.x, bodyPoint2.y));
+		Rect regionOfInterest = Rect(bodyPoint1.x, bodyPoint2.y, bodyPoint2.x - bodyPoint1.x, bodyPoint1.y - bodyPoint2.y);
+		Mat imageROI = image( regionOfInterest );
+		//imshow("ROI", imageROI);
 
 		std::string roiName = (stepsDir + "\\_" + imageName + "_roi.png");
 		//cvSaveImage ( roiName.c_str(), regionOfInterest);
 
-		//IplImage * output = textDetection ( byteQueryImage, stepsDir, fileName, atoi(argv[3]) );
+		Mat output = textDetection ( imageROI, stepsDir, imageName, true );
 
+		rectangle(image, bodyPoint1, bodyPoint2, Scalar( 105,242,18 ), 5);
 	}
 
 	//resize the image
 	Size size(400, 600);
 	resize(image, resizedImage, size);
 
-	IplImage* image1 =cvCloneImage(&(IplImage)image);
-
 	//create buttons
-	cvNamedWindow("main",CV_WINDOW_NORMAL | CV_GUI_EXPANDED);
+	//cvNamedWindow("main",CV_WINDOW_NORMAL | CV_GUI_EXPANDED);
 
 	//-- Show what you got
-	cvShowImage( "main", image1 );
+	imshow( "main", resizedImage );
 }
 
 Point GetFacePoint(Rect &faces, bool bottomLeft)
@@ -142,7 +137,7 @@ Point GetFacePoint(Rect &faces, bool bottomLeft)
 		return facePoint2;
 }
 
-Point GetBodyPoint(Rect &faces, bool bottomLeft)
+Point GetBodyPoint(Rect &faces, Mat inputImage, bool bottomLeft)
 {
 	float faceSubtract = ceil(faces.width * 0.2);
 	float newFaceWidth = (faces.width - faceSubtract);
@@ -154,8 +149,21 @@ Point GetBodyPoint(Rect &faces, bool bottomLeft)
 	float bodyHeight = 4 * faceHeight;
 	int bodyX = floor(centerOfFaceBottomX - (bodyWidth / 2));
 	int bodyY = floor(faces.y + bodyHeight + (1.5 * faceHeight));
+	int body2X = bodyX + bodyWidth;
+	int body2Y = bodyY - bodyHeight;
+
+	if (bodyX < 0) bodyX = 0;
+	if (bodyX > inputImage.size().width) bodyX = inputImage.size().width;
+	if (bodyY < 0) bodyY = 0;
+	if (bodyY > inputImage.size().height) bodyY = inputImage.size().height;
+
+	if (body2X < 0) body2X = 0;
+	if (body2X > inputImage.size().width) body2X = inputImage.size().width;
+	if (body2Y < 0) body2Y = 0;
+	if (body2Y > inputImage.size().height) body2Y = inputImage.size().height;
+
 	Point bodyPoint1 = Point(bodyX, bodyY);
-	Point bodyPoint2 = Point(bodyX + bodyWidth, bodyY - bodyHeight);
+	Point bodyPoint2 = Point(body2X, body2Y);
 
 	if (bottomLeft)
 		return bodyPoint1;
