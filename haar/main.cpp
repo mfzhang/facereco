@@ -1,15 +1,19 @@
 #include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
-
+#include "textdetection.h"
 #include <iostream>
 #include <stdio.h>
+#include <Windows.h>
 
 using namespace std;
 using namespace cv;
 
+// Remove iterator checking
+#define _ITERATOR_DEBUG_LEVEL 0
+
 /** Function Headers */
-void detectAndDisplay( Mat frame );
+void detectAndDisplay( Mat frame, std::string imageName );
 
 /** Global variables */
 String haar_directory = "C:\\OCR\\haarcascades\\";
@@ -27,7 +31,7 @@ void RemoveAboveAndBelowDetections(std::vector<Rect> &faces);
 /** @function main */
 int main( int argc, const char** argv )
 {
-
+	std::string imagePath = argv[1];
 	Mat image;
 	char input;
 	//-- 1. Load the cascades
@@ -42,7 +46,7 @@ int main( int argc, const char** argv )
 	}
 
 	//-- 3. load the image from argument 1
-	image = imread(argv[1], CV_LOAD_IMAGE_COLOR);
+	image = imread(imagePath, CV_LOAD_IMAGE_COLOR);
 
 	if (!image.data)
 	{
@@ -51,7 +55,8 @@ int main( int argc, const char** argv )
 	}
 
 	//-- 4. Apply the classifier to the frame
-	detectAndDisplay( image );
+	std::string fileName = imagePath.substr(imagePath.find_last_of("\\") + 1, imagePath.find_last_of(".") - imagePath.find_last_of("\\") - 1);
+	detectAndDisplay( image, fileName );
 
 	// Wait for a keystroke in the window
 	waitKey(0); 
@@ -59,8 +64,12 @@ int main( int argc, const char** argv )
 }
 
 /** @function detectAndDisplay */
-void detectAndDisplay( Mat image )
+void detectAndDisplay( Mat image, std::string imageName )
 {
+	std::string stepsDir = "StepsOutput";
+
+	CreateDirectory(L"StepsOutput", NULL);
+
 	std::vector<Rect> faces;
 	std::vector<Rect> profileFaces;
 	Mat frame_gray;
@@ -93,6 +102,14 @@ void detectAndDisplay( Mat image )
 		Point bodyPoint2 = GetBodyPoint(faces[i], false);
 
 		rectangle(image, bodyPoint1, bodyPoint2, Scalar( 105,242,18 ), 5);
+
+		//cvSetImageROI(image, cvRect(bodyPoint1.x, bodyPoint1.y, bodyPoint2.x - bodyPoint1.x, bodyPoint1.y - bodyPoint2.y));
+		//IplImage *regionOfInterest = cvCreateImage(cvGetSize(cv::Range(bodyPoint1.x, bodyPoint1.y), cv::Range(bodyPoint2.x, bodyPoint2.y));
+
+		std::string roiName = (stepsDir + "\\_" + imageName + "_roi.png");
+		//cvSaveImage ( roiName.c_str(), regionOfInterest);
+
+		//IplImage * output = textDetection ( byteQueryImage, stepsDir, fileName, atoi(argv[3]) );
 
 	}
 

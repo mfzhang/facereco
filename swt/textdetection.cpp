@@ -282,8 +282,9 @@ void renderChains (IplImage * SWTImage,
 	cvReleaseImage(&outTemp);
 }
 
-IplImage * textDetection (IplImage * input, bool dark_on_light)
+IplImage * textDetection (IplImage * input, std::string stepsDir, std::string imageName, bool dark_on_light)
 {
+
     assert ( input->depth == IPL_DEPTH_8U );
     assert ( input->nChannels == 3 );
     std::cout << "Running textDetection with dark_on_light " << dark_on_light << std::endl;
@@ -297,7 +298,8 @@ IplImage * textDetection (IplImage * input, bool dark_on_light)
     IplImage * edgeImage =
             cvCreateImage( cvGetSize (input),IPL_DEPTH_8U, 1 );
     cvCanny(grayImage, edgeImage, threshold_low, threshold_high, 3) ;
-    cvSaveImage ( "canny.png", edgeImage);
+	std::string cannyName = (stepsDir + "\\_" + imageName + "_a.png");
+	cvSaveImage ( cannyName.c_str(), edgeImage);
 
     // Create gradient X, gradient Y
     IplImage * gaussianImage =
@@ -334,7 +336,8 @@ IplImage * textDetection (IplImage * input, bool dark_on_light)
     IplImage * saveSWT =
             cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 1 );
     cvConvertScale(output2, saveSWT, 255, 0);
-    cvSaveImage ( "SWT.png", saveSWT);
+	std::string swtName = (stepsDir + "\\" + imageName + "_b.png");
+	cvSaveImage ( swtName.c_str(), saveSWT);
     cvReleaseImage ( &output2 );
     cvReleaseImage( &saveSWT );
 
@@ -355,8 +358,9 @@ IplImage * textDetection (IplImage * input, bool dark_on_light)
     IplImage * output3 =
             cvCreateImage ( cvGetSize ( input ), 8U, 3 );
     renderComponentsWithBoxes (SWTImage, validComponents, compBB, output3);
-    cvSaveImage ( "components.png",output3);
-    //cvReleaseImage ( &output3 );
+	std::string componentsName = (stepsDir + "\\" + imageName + "_c.png");
+	cvSaveImage ( componentsName.c_str(),output3);
+    cvReleaseImage ( &output3 );
 
     // Make chains of components
     std::vector<Chain> chains;
@@ -365,21 +369,29 @@ IplImage * textDetection (IplImage * input, bool dark_on_light)
     IplImage * output4 =
             cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 1 );
     renderChains ( SWTImage, validComponents, chains, output4 );
-    //cvSaveImage ( "text.png", output4);
+	std::string chainsName = (stepsDir + "\\" + imageName + "_d.png");
+	cvSaveImage ( chainsName.c_str(), output4);
 
     IplImage * output5 =
             cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 3 );
     cvCvtColor (output4, output5, CV_GRAY2RGB);
+	std::string cvtName = (stepsDir + "\\" + imageName + "_e.png");
+	cvSaveImage ( cvtName.c_str(), output5);
     cvReleaseImage ( &output4 );
+	cvReleaseImage ( &output5 );
 
-    /*IplImage * output =
+    IplImage * output6 =
             cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 3 );
-    renderChainsWithBoxes ( SWTImage, validComponents, chains, compBB, output); */
+    renderChainsWithBoxes ( SWTImage, validComponents, chains, compBB, output6);
+	std::string chainsBoxesName = (stepsDir + "\\" + imageName + "_f.png");
+	cvSaveImage ( chainsBoxesName.c_str(), output6);
+	//cvReleaseImage ( &output6 );
+
     cvReleaseImage ( &gradientX );
     cvReleaseImage ( &gradientY );
     cvReleaseImage ( &SWTImage );
     cvReleaseImage ( &edgeImage );
-    return output5;
+    return output6;
 }
 
 void strokeWidthTransform (IplImage * edgeImage,

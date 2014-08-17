@@ -16,11 +16,17 @@
     You should have received a copy of the GNU General Public License
     along with DetectText.  If not, see <http://www.gnu.org/licenses/>.
 */
+
+// Remove iterator checking
+#define _ITERATOR_DEBUG_LEVEL 0
+
 #include <cassert>
 #include <fstream>
 #include "textdetection.h"
 #include <opencv/highgui.h>
 #include <exception>
+#include <string>
+#include <windows.h>
 
 void convertToFloatImage ( IplImage * byteImage, IplImage * floatImage )
 {
@@ -73,15 +79,22 @@ IplImage * loadFloatImage ( const char * name )
 
 int mainTextDetection ( int argc, char * * argv )
 {
-  IplImage * byteQueryImage = loadByteImage ( argv[1] );
+  std::string stepsDir = "StepsOutput";
+  std::string imagePath = argv[1];
+  IplImage * byteQueryImage = loadByteImage ( imagePath.c_str() );
   if ( !byteQueryImage )
   {
     printf ( "couldn't load query image\n" );
     return -1;
   }
 
+  CreateDirectory(L"StepsOutput", NULL);
+
+  DWORD error = GetLastError();
+
   // Detect text in the image
-  IplImage * output = textDetection ( byteQueryImage, atoi(argv[3]) );
+  std::string fileName = imagePath.substr(imagePath.find_last_of("\\") + 1, imagePath.find_last_of(".") - imagePath.find_last_of("\\") - 1);
+  IplImage * output = textDetection ( byteQueryImage, stepsDir, fileName, atoi(argv[3]) );
   cvReleaseImage ( &byteQueryImage );
   cvSaveImage ( argv[2], output );
   cvReleaseImage ( &output );
