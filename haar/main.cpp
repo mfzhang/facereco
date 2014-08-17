@@ -69,6 +69,8 @@ void detectAndDisplay( Mat image, std::string imageName )
 
 	std::vector<Rect> faces;
 	std::vector<Rect> profileFaces;
+	std::vector<std::pair<Point,Point>> bodyPoints;
+	std::vector<std::pair<Point,Point>> facePoints;
 	Mat frame_gray;
 	Mat resizedImage;
 
@@ -92,7 +94,8 @@ void detectAndDisplay( Mat image, std::string imageName )
 		Point facePoint1 = GetFacePoint(faces[i], true);
 		Point facePoint2 = GetFacePoint(faces[i], false);
 
-		rectangle(image, facePoint1, facePoint2, Scalar( 255, 0, 0 ), 5);
+		std::pair<Point,Point> pair(facePoint1, facePoint2);
+		facePoints.push_back(pair);
 
 		// Draw box around body
 		Point bodyPoint1 = GetBodyPoint(faces[i], frame_gray, true);
@@ -102,12 +105,25 @@ void detectAndDisplay( Mat image, std::string imageName )
 		Mat imageROI = image( regionOfInterest );
 		//imshow("ROI", imageROI);
 
-		std::string roiName = (stepsDir + "\\_" + imageName + "_roi.png");
-		//cvSaveImage ( roiName.c_str(), regionOfInterest);
+		//resize the image
+		//Size size(400, 400);
+		//resize(imageROI, resizedImage, size);
 
-		Mat output = textDetection ( imageROI, stepsDir, imageName, true );
+		std::string roiName = (stepsDir + "\\_" + imageName + "_" + std::to_string(i) + "_roi.png");
+		imwrite( roiName, imageROI);
 
-		rectangle(image, bodyPoint1, bodyPoint2, Scalar( 105,242,18 ), 5);
+		Mat output = textDetection ( imageROI, stepsDir, imageName + "_" + std::to_string(i) + "_roi" , true );
+
+		std::pair<Point,Point> pair2(bodyPoint1, bodyPoint2);
+		bodyPoints.push_back(pair2);
+		
+	}
+
+	// Render the boxes
+	for( size_t i = 0; i < bodyPoints.size(); i++)
+	{
+		rectangle(image, bodyPoints.at(i).first, bodyPoints.at(i).second, Scalar( 105,242,18 ), 5);
+		rectangle(image, facePoints.at(i).first, facePoints.at(i).second, Scalar( 255, 0, 0 ), 5);
 	}
 
 	//resize the image

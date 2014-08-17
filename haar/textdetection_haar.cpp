@@ -365,7 +365,7 @@ cv::Mat textDetection (cv::Mat matInput, std::string stepsDir, std::string image
             cvCreateImage ( cvGetSize ( input ), 8U, 3 );
     renderComponentsWithBoxes (SWTImage, validComponents, compBB, output3);
 	std::string componentsName = (stepsDir + "\\" + imageName + "_c.png");
-	cvSaveImage ( componentsName.c_str(),output3);
+	//cvSaveImage ( componentsName.c_str(),output3);
     cvReleaseImage ( &output3 );
 
     // Make chains of components
@@ -376,7 +376,7 @@ cv::Mat textDetection (cv::Mat matInput, std::string stepsDir, std::string image
             cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 1 );
     renderChains ( SWTImage, validComponents, chains, output4 );
 	std::string chainsName = (stepsDir + "\\" + imageName + "_d.png");
-	cvSaveImage ( chainsName.c_str(), output4);
+	//cvSaveImage ( chainsName.c_str(), output4);
 
     IplImage * output5 =
             cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 3 );

@@ -79,7 +79,7 @@ IplImage * loadFloatImage ( const char * name )
 
 int mainTextDetection ( int argc, char * * argv )
 {
-  std::string stepsDir = "StepsOutput";
+  std::string stepsDir = "C:\\OCR\\StepsOutput";
   std::string imagePath = argv[1];
   IplImage * byteQueryImage = loadByteImage ( imagePath.c_str() );
   if ( !byteQueryImage )
@@ -88,7 +88,7 @@ int mainTextDetection ( int argc, char * * argv )
     return -1;
   }
 
-  CreateDirectory(L"StepsOutput", NULL);
+  CreateDirectory(L"C:\\OCR\\StepsOutput", NULL);
 
   DWORD error = GetLastError();
 
