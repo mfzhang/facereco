@@ -333,7 +333,7 @@ cv::Mat textDetection (cv::Mat matInput, std::string stepsDir, std::string image
   cv::blur( srcGrayMat, edgeImageMat, cv::Size(3,3) );
 
   /// Canny detector
-  int lowThreshold = 65;
+  int lowThreshold = 55;
   int ratio = 3;
   int kernel_size = 3;
   Canny(edgeImageMat, edgeImageMat, lowThreshold, lowThreshold*ratio, kernel_size );
@@ -376,6 +376,8 @@ cv::Mat textDetection (cv::Mat matInput, std::string stepsDir, std::string image
     std::vector<Ray> rays;
     IplImage * SWTImage =
             cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_32F, 1 );
+
+	// Set all pixel values to -1 in the new SWTImage
     for( int row = 0; row < input->height; row++ ){
         float* ptr = (float*)(SWTImage->imageData + row * SWTImage->widthStep);
         for ( int col = 0; col < input->width; col++ ){
@@ -466,6 +468,8 @@ void strokeWidthTransform (IplImage * edgeImage,
     for( int row = 0; row < edgeImage->height; row++ ){
         const uchar* ptr = (const uchar*)(edgeImage->imageData + row * edgeImage->widthStep);
         for ( int col = 0; col < edgeImage->width; col++ ){
+
+			// if the pixel is not black
             if (*ptr > 0) {
                 Ray r;
 
@@ -492,6 +496,8 @@ void strokeWidthTransform (IplImage * edgeImage,
                     G_y = G_y/mag;
 
                 }
+
+				// Move one pixel at a time along path of ray
                 while (true) {
                     curX += G_x*prec;
                     curY += G_y*prec;
@@ -502,14 +508,17 @@ void strokeWidthTransform (IplImage * edgeImage,
                         if (curPixX < 0 || (curPixX >= SWTImage->width) || curPixY < 0 || (curPixY >= SWTImage->height)) {
                             break;
                         }
+
+						// Set the current ray path pixel
                         Point2d pnew;
                         pnew.x = curPixX;
                         pnew.y = curPixY;
                         points.push_back(pnew);
 
+						// if the pixel is an edge
                         if (CV_IMAGE_ELEM ( edgeImage, uchar, curPixY, curPixX) > 0) {
                             r.q = pnew;
-                            // dot product
+                            // calculate the opposite ray
                             float G_xt = CV_IMAGE_ELEM(gradientX,float,curPixY,curPixX);
                             float G_yt = CV_IMAGE_ELEM(gradientY,float,curPixY,curPixX);
                             mag = sqrt( (G_xt * G_xt) + (G_yt * G_yt) );
@@ -522,7 +531,8 @@ void strokeWidthTransform (IplImage * edgeImage,
 
                             }
 
-                            if (acos(G_x * -G_xt + G_y * -G_yt) < PI/2.0 ) {
+							// if direction of new pixel is roughly opposite to direction of original pixel += pi/5  -- originally pi/2
+                            if (acos(G_x * -G_xt + G_y * -G_yt) < PI/5.0 ) {
                                 float length = sqrt( ((float)r.q.x - (float)r.p.x)*((float)r.q.x - (float)r.p.x) + ((float)r.q.y - (float)r.p.y)*((float)r.q.y - (float)r.p.y));
                                 for (std::vector<Point2d>::iterator pit = points.begin(); pit != points.end(); pit++) {
                                     if (CV_IMAGE_ELEM(SWTImage, float, pit->y, pit->x) < 0) {
@@ -545,8 +555,9 @@ void strokeWidthTransform (IplImage * edgeImage,
 
 }
 
-void SWTMedianFilter (IplImage * SWTImage,
-                     std::vector<Ray> & rays) {
+// check the median value of all the pixels in each ray and set the special cases to that median value
+void SWTMedianFilter (IplImage * SWTImage, std::vector<Ray> & rays) 
+{
     for (std::vector<Ray>::iterator rit = rays.begin(); rit != rays.end(); rit++) {
         for (std::vector<Point2d>::iterator pit = rit->points.begin(); pit != rit->points.end(); pit++) {
             pit->SWT = CV_IMAGE_ELEM(SWTImage, float, pit->y, pit->x);
@@ -598,17 +609,20 @@ void findLegallyConnectedComponents (IplImage * SWTImage,
                     int this_pixel = map[row * SWTImage->width + col];
                     if (col+1 < SWTImage->width) {
                         float right = CV_IMAGE_ELEM(SWTImage, float, row, col+1);
-                        if (right > 0 && ((*ptr)/right <= 3.0 && right/(*ptr) <= 3.0))
+                        //if (right > 0 && ((*ptr)/right <= 3.0 && right/(*ptr) <= 3.0))  //modified by soda
+						if (right > 0 && ((*ptr)/right))
                             boost::add_edge(this_pixel, map.at(row * SWTImage->width + col + 1), g);
                     }
                     if (row+1 < SWTImage->height) {
                         if (col+1 < SWTImage->width) {
                             float right_down = CV_IMAGE_ELEM(SWTImage, float, row+1, col+1);
-                            if (right_down > 0 && ((*ptr)/right_down <= 3.0 && right_down/(*ptr) <= 3.0))
+                            //if (right_down > 0 && ((*ptr)/right_down <= 3.0 || right_down/(*ptr) <= 3.0)) //modified by soda
+							if (right_down > 0 && ((*ptr)/right_down <= 3.0))
                                 boost::add_edge(this_pixel, map.at((row+1) * SWTImage->width + col + 1), g);
                         }
                         float down = CV_IMAGE_ELEM(SWTImage, float, row+1, col);
-                        if (down > 0 && ((*ptr)/down <= 3.0 && down/(*ptr) <= 3.0))
+                        //if (down > 0 && ((*ptr)/down <= 3.0 || down/(*ptr) <= 3.0)) //modified by soda
+						if (down > 0 && ((*ptr)/down <= 3.0))
                             boost::add_edge(this_pixel, map.at((row+1) * SWTImage->width + col), g);
                         if (col-1 >= 0) {
                             float left_down = CV_IMAGE_ELEM(SWTImage, float, row+1, col-1);
@@ -677,7 +691,8 @@ findLegallyConnectedComponentsRAY (IplImage * SWTImage,
                 for (std::vector<Point2d>::const_iterator it2 = it->points.begin(); it2 != it->points.end(); it2++) {
                         float currentSW = CV_IMAGE_ELEM(SWTImage, float, it2->y, it2->x);
                         if (lastSW == 0) {}
-                        else if (lastSW/currentSW<=3.0 || currentSW/lastSW<=3.0){
+                        //else if (lastSW/currentSW<=3.0 || currentSW/lastSW<=3.0){  // modified by soda
+						else if (lastSW/currentSW<=3.0){
                                 boost::add_edge(map.at(it2->y * SWTImage->width + it2->x), map.at(lastRow * SWTImage->width + lastCol), g);
                         }
                         lastSW = currentSW;
