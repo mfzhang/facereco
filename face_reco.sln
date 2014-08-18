@@ -11,6 +11,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "swt", "swt\swt.vcxproj", "{
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Binar_lib", "..\Binar_109fixed\Binar\Binar_lib.vcxproj", "{4E9E5AD0-F337-49AE-9274-53ADCA8C10ED}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "canny", "canny\canny.vcxproj", "{5AF359B0-0684-4D90-87D3-AEFD0799112A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Mixed Platforms = Debug|Mixed Platforms
@@ -73,6 +75,16 @@ Global
 		{4E9E5AD0-F337-49AE-9274-53ADCA8C10ED}.Release|Win32.ActiveCfg = Release|Win32
 		{4E9E5AD0-F337-49AE-9274-53ADCA8C10ED}.Release|Win32.Build.0 = Release|Win32
 		{4E9E5AD0-F337-49AE-9274-53ADCA8C10ED}.Release|x64.ActiveCfg = Release|Win32
+		{5AF359B0-0684-4D90-87D3-AEFD0799112A}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
+		{5AF359B0-0684-4D90-87D3-AEFD0799112A}.Debug|Mixed Platforms.Build.0 = Debug|Win32
+		{5AF359B0-0684-4D90-87D3-AEFD0799112A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{5AF359B0-0684-4D90-87D3-AEFD0799112A}.Debug|Win32.Build.0 = Debug|Win32
+		{5AF359B0-0684-4D90-87D3-AEFD0799112A}.Debug|x64.ActiveCfg = Debug|Win32
+		{5AF359B0-0684-4D90-87D3-AEFD0799112A}.Release|Mixed Platforms.ActiveCfg = Release|x64
+		{5AF359B0-0684-4D90-87D3-AEFD0799112A}.Release|Mixed Platforms.Build.0 = Release|x64
+		{5AF359B0-0684-4D90-87D3-AEFD0799112A}.Release|Win32.ActiveCfg = Release|Win32
+		{5AF359B0-0684-4D90-87D3-AEFD0799112A}.Release|Win32.Build.0 = Release|Win32
+		{5AF359B0-0684-4D90-87D3-AEFD0799112A}.Release|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

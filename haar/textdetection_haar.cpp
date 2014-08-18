@@ -45,6 +45,33 @@
 
 #define PI 3.14159265
 
+// FROM CCV CCV_SWT.c
+const ccv_swt_param_t ccv_swt_default_params = { 
+	1,  //interval
+	1, //min_neighbors
+	0, //scale_invariant
+	3, //size
+	124, //low_thresh
+	204,  //high_thresh
+	300,  //max_height
+	8,  //min_height
+	38,  //min_area
+	3,  //letter_occlude_thresh
+	8,  //aspect_ratio
+	0.83,  //std_ratio
+	1.5,  //thickness_ratio
+	1.7,  //height_ratio
+	31,  //intensity_thresh
+	2.9,  //distance_ratio
+	1.3,  //intersect_ratio
+	3,  //letter_thresh
+	1.9,  //elongate_ratio
+	1,  //breakdown
+	1.0,  //breakdown_ratio
+	0.1,  //same_word_thresh1
+	0.8 //same_word_thresh2
+};
+
 std::vector<std::pair<CvPoint,CvPoint> > findBoundingBoxes( std::vector<std::vector<Point2d> > & components,
                                                            std::vector<Chain> & chains,
                                                            std::vector<std::pair<Point2d,Point2d> > & compBB,
@@ -287,25 +314,47 @@ void renderChains (IplImage * SWTImage,
 cv::Mat textDetection (cv::Mat matInput, std::string stepsDir, std::string imageName, bool dark_on_light)
 {
 
-    //assert ( matInput.depth() == IPL_DEPTH_8U );
-    //assert ( matInput.channels() == 3 );
     std::cout << "Running textDetection with dark_on_light " << dark_on_light << std::endl;
+
+
 
 	//For backwards compatibility, convert Mat to IplImage
 	IplImage* input = &matInput.operator IplImage();
 
-    // Convert to grayscale
-    IplImage * grayImage =
-            cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 1 );
-    cvCvtColor ( input, grayImage, CV_RGB2GRAY );
-    // Create Canny Image
-    double threshold_low = 175;
-    double threshold_high = 320;
-    IplImage * edgeImage =
-            cvCreateImage( cvGetSize (input),IPL_DEPTH_8U, 1 );
-    cvCanny(grayImage, edgeImage, threshold_low, threshold_high, 3) ;
-	std::string cannyName = (stepsDir + "\\_" + imageName + "_a.png");
-	cvSaveImage ( cannyName.c_str(), edgeImage);
+	//assert ( input->depth == IPL_DEPTH_8U );
+	//assert ( input->nChannels == 3 );
+  
+  // NEW VERSION
+  // Convert to Gray
+  cv::Mat srcGrayMat, edgeImageMat;
+  cvtColor( matInput, srcGrayMat, CV_BGR2GRAY );
+
+  /// Reduce noise with a kernel 3x3
+  cv::blur( srcGrayMat, edgeImageMat, cv::Size(3,3) );
+
+  /// Canny detector
+  int lowThreshold = 65;
+  int ratio = 3;
+  int kernel_size = 3;
+  Canny(edgeImageMat, edgeImageMat, lowThreshold, lowThreshold*ratio, kernel_size );
+  std::string cannyName = (stepsDir + "\\_" + imageName + "_a.png");
+  imwrite(cannyName.c_str(), edgeImageMat);
+
+ //   // Convert to grayscale
+ //   IplImage * grayImage =
+ //           cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 1 );
+ //   cvCvtColor ( input, grayImage, CV_RGB2GRAY );
+ //   // Create Canny Image
+	//double threshold_low = 175; //175;
+	//double threshold_high = 320; //320;
+ //   IplImage * edgeImage =
+ //           cvCreateImage( cvGetSize (input),IPL_DEPTH_8U, 1 );
+	//cvCanny(grayImage, edgeImage, threshold_low, threshold_high, 3) ;
+	//std::string cannyName = (stepsDir + "\\_" + imageName + "_a.png");
+	//cvSaveImage ( cannyName.c_str(), edgeImage);
+
+	IplImage* edgeImage = &edgeImageMat.operator IplImage();
+	IplImage* grayImage = &srcGrayMat.operator IplImage();
 
     // Create gradient X, gradient Y
     IplImage * gaussianImage =
@@ -321,7 +370,7 @@ cv::Mat textDetection (cv::Mat matInput, std::string stepsDir, std::string image
     cvSmooth(gradientX, gradientX, 3, 3);
     cvSmooth(gradientY, gradientY, 3, 3);
     cvReleaseImage ( &gaussianImage );
-    cvReleaseImage ( &grayImage );
+    //cvReleaseImage ( &grayImage );
 
     // Calculate SWT and return ray vectors
     std::vector<Ray> rays;
@@ -365,7 +414,7 @@ cv::Mat textDetection (cv::Mat matInput, std::string stepsDir, std::string image
             cvCreateImage ( cvGetSize ( input ), 8U, 3 );
     renderComponentsWithBoxes (SWTImage, validComponents, compBB, output3);
 	std::string componentsName = (stepsDir + "\\" + imageName + "_c.png");
-	//cvSaveImage ( componentsName.c_str(),output3);
+	cvSaveImage ( componentsName.c_str(),output3);
     cvReleaseImage ( &output3 );
 
     // Make chains of components
@@ -396,7 +445,7 @@ cv::Mat textDetection (cv::Mat matInput, std::string stepsDir, std::string image
     cvReleaseImage ( &gradientX );
     cvReleaseImage ( &gradientY );
     cvReleaseImage ( &SWTImage );
-    cvReleaseImage ( &edgeImage );
+    //cvReleaseImage ( &edgeImage );
 	//cvReleaseImage( &input );
 
 	cv::Mat output6Mat(output6);
@@ -549,21 +598,21 @@ void findLegallyConnectedComponents (IplImage * SWTImage,
                     int this_pixel = map[row * SWTImage->width + col];
                     if (col+1 < SWTImage->width) {
                         float right = CV_IMAGE_ELEM(SWTImage, float, row, col+1);
-                        if (right > 0 && ((*ptr)/right <= 3.0 || right/(*ptr) <= 3.0))
+                        if (right > 0 && ((*ptr)/right <= 3.0 && right/(*ptr) <= 3.0))
                             boost::add_edge(this_pixel, map.at(row * SWTImage->width + col + 1), g);
                     }
                     if (row+1 < SWTImage->height) {
                         if (col+1 < SWTImage->width) {
                             float right_down = CV_IMAGE_ELEM(SWTImage, float, row+1, col+1);
-                            if (right_down > 0 && ((*ptr)/right_down <= 3.0 || right_down/(*ptr) <= 3.0))
+                            if (right_down > 0 && ((*ptr)/right_down <= 3.0 && right_down/(*ptr) <= 3.0))
                                 boost::add_edge(this_pixel, map.at((row+1) * SWTImage->width + col + 1), g);
                         }
                         float down = CV_IMAGE_ELEM(SWTImage, float, row+1, col);
-                        if (down > 0 && ((*ptr)/down <= 3.0 || down/(*ptr) <= 3.0))
+                        if (down > 0 && ((*ptr)/down <= 3.0 && down/(*ptr) <= 3.0))
                             boost::add_edge(this_pixel, map.at((row+1) * SWTImage->width + col), g);
                         if (col-1 >= 0) {
                             float left_down = CV_IMAGE_ELEM(SWTImage, float, row+1, col-1);
-                            if (left_down > 0 && ((*ptr)/left_down <= 3.0 || left_down/(*ptr) <= 3.0))
+                            if (left_down > 0 && ((*ptr)/left_down <= 3.0 && left_down/(*ptr) <= 3.0))
                                 boost::add_edge(this_pixel, map.at((row+1) * SWTImage->width + col - 1), g);
                         }
                     }

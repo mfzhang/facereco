@@ -21,6 +21,37 @@
 
 #include <opencv/cv.h>
 
+struct ccv_swt_param_t {
+	int interval; // for scale invariant option
+	int min_neighbors; // minimal neighbors to make a detection valid, this is for scale-invariant version
+	int scale_invariant; // enable scale invariant swt (to scale to different sizes and then combine the results)
+	int direction;
+	/* canny parameters */
+	int size;
+	int low_thresh;
+	int high_thresh;
+	/* geometry filtering parameters */
+	int max_height;
+	int min_height;
+	int min_area;
+	int letter_occlude_thresh;
+	double aspect_ratio;
+	double std_ratio;
+	/* grouping parameters */
+	double thickness_ratio;
+	double height_ratio;
+	int intensity_thresh;
+	double distance_ratio;
+	double intersect_ratio;
+	double elongate_ratio;
+	int letter_thresh;
+	/* break textline into words */
+	int breakdown;
+	double breakdown_ratio;
+	double same_word_thresh1; // overlapping more than 0.1 of the bigger one (0), and 0.9 of the smaller one (1)
+	double same_word_thresh2; // overlapping more than 0.1 of the bigger one (0), and 0.9 of the smaller one (1)
+};
+
 struct Point2d {
     int x;
     int y;
