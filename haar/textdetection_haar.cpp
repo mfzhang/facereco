@@ -313,6 +313,12 @@ void renderChains (IplImage * SWTImage,
 
 cv::Mat textDetection (cv::Mat matInput, std::string stepsDir, std::string imageName, bool dark_on_light)
 {
+	bool showCanny = false;
+	bool showSWT = false;
+	bool showComponents = false;
+	bool showChains = false;
+	bool showCvtColor = false;
+	bool showChainsWithBoxes = false;
 
     std::cout << "Running textDetection with dark_on_light " << dark_on_light << std::endl;
 
@@ -337,9 +343,12 @@ cv::Mat textDetection (cv::Mat matInput, std::string stepsDir, std::string image
   int ratio = 3;
   int kernel_size = 3;
   Canny(edgeImageMat, edgeImageMat, lowThreshold, lowThreshold*ratio, kernel_size );
-  std::string cannyName = (stepsDir + "\\_" + imageName + "_a.png");
-  imwrite(cannyName.c_str(), edgeImageMat);
 
+  if (showCanny)
+  {
+	  std::string cannyName = (stepsDir + "\\_" + imageName + "_a.png");
+	  imwrite(cannyName.c_str(), edgeImageMat);
+  }
  //   // Convert to grayscale
  //   IplImage * grayImage =
  //           cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 1 );
@@ -393,8 +402,13 @@ cv::Mat textDetection (cv::Mat matInput, std::string stepsDir, std::string image
     IplImage * saveSWT =
             cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 1 );
     cvConvertScale(output2, saveSWT, 255, 0);
-	std::string swtName = (stepsDir + "\\" + imageName + "_b.png");
-	cvSaveImage ( swtName.c_str(), saveSWT);
+
+	if (showSWT)
+	{
+		std::string swtName = (stepsDir + "\\" + imageName + "_b.png");
+		cvSaveImage ( swtName.c_str(), saveSWT);
+	}
+
     cvReleaseImage ( &output2 );
     cvReleaseImage( &saveSWT );
 
@@ -415,8 +429,13 @@ cv::Mat textDetection (cv::Mat matInput, std::string stepsDir, std::string image
     IplImage * output3 =
             cvCreateImage ( cvGetSize ( input ), 8U, 3 );
     renderComponentsWithBoxes (SWTImage, validComponents, compBB, output3);
-	std::string componentsName = (stepsDir + "\\" + imageName + "_c.png");
-	cvSaveImage ( componentsName.c_str(),output3);
+
+	if (showComponents)
+	{
+		std::string componentsName = (stepsDir + "\\" + imageName + "_c.png");
+		cvSaveImage ( componentsName.c_str(),output3);
+	}
+
     cvReleaseImage ( &output3 );
 
     // Make chains of components
@@ -426,22 +445,34 @@ cv::Mat textDetection (cv::Mat matInput, std::string stepsDir, std::string image
     IplImage * output4 =
             cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 1 );
     renderChains ( SWTImage, validComponents, chains, output4 );
-	std::string chainsName = (stepsDir + "\\" + imageName + "_d.png");
-	//cvSaveImage ( chainsName.c_str(), output4);
+
+	if (showChains)
+	{
+		std::string chainsName = (stepsDir + "\\" + imageName + "_d.png");
+		cvSaveImage ( chainsName.c_str(), output4);
+	}
 
     IplImage * output5 =
             cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 3 );
     cvCvtColor (output4, output5, CV_GRAY2RGB);
-	std::string cvtName = (stepsDir + "\\" + imageName + "_e.png");
-	cvSaveImage ( cvtName.c_str(), output5);
+
+	if (showCvtColor)
+	{
+		std::string cvtName = (stepsDir + "\\" + imageName + "_e.png");
+		cvSaveImage ( cvtName.c_str(), output5);
+	}
     cvReleaseImage ( &output4 );
 	cvReleaseImage ( &output5 );
 
     IplImage * output6 =
             cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 3 );
     renderChainsWithBoxes ( SWTImage, validComponents, chains, compBB, output6);
-	std::string chainsBoxesName = (stepsDir + "\\" + imageName + "_f.png");
-	cvSaveImage ( chainsBoxesName.c_str(), output6);
+
+	if (showChainsWithBoxes)
+	{
+		std::string chainsBoxesName = (stepsDir + "\\" + imageName + "_f.png");
+		cvSaveImage ( chainsBoxesName.c_str(), output6);
+	}
 	//cvReleaseImage ( &output6 );
 
     cvReleaseImage ( &gradientX );
