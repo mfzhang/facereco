@@ -27,6 +27,7 @@ cnt=1;
 %set the image to all -1
 SWTImage = zeros(imageHeight,imageWidth)-1;
 
+
 for row = 1:imageHeight
     for col = 1:imageWidth
         
@@ -40,6 +41,7 @@ for row = 1:imageHeight
         r.p = p;
         k = 1;
         clear points;
+        pointsList = repmat(pointStruct, sizeOfPointsArray);
         pointsList(k) = p;
         
         curX = col + 0.5;
