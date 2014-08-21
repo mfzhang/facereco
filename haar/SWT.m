@@ -39,7 +39,7 @@ for row = 1:imageHeight
         p.y = row;
         r.p = p;
         k = 1;
-        clear points;
+        clear pointsList;
         pointsList(k) = p;
         
         curX = col + 0.5;
@@ -115,8 +115,8 @@ for row = 1:imageHeight
                             end
                         end
                         
-                        % Add the points to the ray object
-                        r.points = pointsList;
+                        % Add the pointsList to the ray object
+                        r.pointsList = pointsList;
                         % Add the ray object to the rays list
                         raysList(cnt)=r; cnt=cnt+1;
                     end
@@ -132,18 +132,18 @@ end
 % subplot(1,3,2);
 % imagesc(SWTImage);
 
-% For each ray, go through each of the points and find the median length.
+% For each ray, go through each of the pointsList and find the median length.
 % Set each point to the median length
 for i=1:length(raysList)-1          %each rays
     cnt1 = 1;
-    for j=1:length(raysList(i).points)  %each points on the rays
-        xxx(cnt1) = SWTImage(raysList(i).points(j).y,raysList(i).points(j).x);
+    for j=1:length(raysList(i).pointsList)  %each pointsList on the rays
+        xxx(cnt1) = SWTImage(raysList(i).pointsList(j).y,raysList(i).pointsList(j).x);
         cnt1 = cnt1+1;
     end
     raysList(i).med = median(xxx);
     
-    for j=1:length(raysList(i).points)  %each points on the rays
-        SWTImage(raysList(i).points(j).y,raysList(i).points(j).x)= min(SWTImage(raysList(i).points(j).y,raysList(i).points(j).x),raysList(i).med);
+    for j=1:length(raysList(i).pointsList)  %each pointsList on the rays
+        SWTImage(raysList(i).pointsList(j).y,raysList(i).pointsList(j).x)= min(SWTImage(raysList(i).pointsList(j).y,raysList(i).pointsList(j).x),raysList(i).med);
     end    
 end
 %SWTImage(SWTImage == -1) = max( SWTImage(:) );
