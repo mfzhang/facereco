@@ -74,6 +74,10 @@ void detectAndDisplay( Mat image, std::string imageName )
 	Mat frame_gray;
 	Mat resizedImage;
 
+	//resize the image
+	Size size(image.cols * 0.5, image.rows * 0.5);
+	resize(image, image, size);
+
 	cvtColor( image, frame_gray, CV_BGR2GRAY );
 	equalizeHist( frame_gray, frame_gray );
 
@@ -110,14 +114,16 @@ void detectAndDisplay( Mat image, std::string imageName )
 		//resize(imageROI, resizedImage, size);
 
 		std::string roiName = (stepsDir + "\\_" + imageName + "_" + std::to_string(i) + "_roi.png");
-		imwrite( roiName, imageROI);
+		imwrite( roiName, image);
 
-		Mat output = textDetection ( imageROI, stepsDir, imageName + "_" + std::to_string(i) + "_roi" , true );
+		//Mat output = textDetection ( image, stepsDir, imageName + "_" + std::to_string(i) + "_roi" , true );
 
 		std::pair<Point,Point> pair2(bodyPoint1, bodyPoint2);
 		bodyPoints.push_back(pair2);
 		
 	}
+
+	Mat output = textDetection ( image, stepsDir, imageName + "_TEST" , true );
 
 	// Render the boxes
 	for( size_t i = 0; i < bodyPoints.size(); i++)
@@ -127,14 +133,14 @@ void detectAndDisplay( Mat image, std::string imageName )
 	}
 
 	//resize the image
-	Size size(400, 600);
-	resize(image, resizedImage, size);
+	/*Size size(400, 600);
+	resize(image, resizedImage, size);*/
 
 	//create buttons
 	//cvNamedWindow("main",CV_WINDOW_NORMAL | CV_GUI_EXPANDED);
 
 	//-- Show what you got
-	imshow( "main", resizedImage );
+	imshow( "main", image );
 }
 
 Point GetFacePoint(Rect &faces, bool bottomLeft)
