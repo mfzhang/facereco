@@ -1,3 +1,7 @@
+
+// Remove iterator checking
+#define _ITERATOR_DEBUG_LEVEL 0
+
 #include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
@@ -8,6 +12,7 @@
 
 using namespace std;
 using namespace cv;
+
 
 /** Function Headers */
 void detectAndDisplay( Mat frame, std::string imageName );
@@ -39,8 +44,14 @@ int main( int argc, const char** argv )
 	Mat image;
 	char input;
 	//-- 2. Load the cascades
-	if( !face_cascade.load( face_cascade_name ) ){ printf("--(!)Error loading\n"); return -1; };
-	if( !profile_cascade.load( profile_cascade_name ) ){ printf("--(!)Error loading\n"); return -1; };
+	if( !face_cascade.load( face_cascade_name ) ){ 
+		printf("--(!)Error loading\n"); 
+		return -1; 
+	};
+	if( !profile_cascade.load( profile_cascade_name ) ){
+		printf("--(!)Error loading\n"); 
+		return -1; 
+	};
 
 	//-- 3. load the image from argument 1
 	image = imread(imagePath, CV_LOAD_IMAGE_COLOR);

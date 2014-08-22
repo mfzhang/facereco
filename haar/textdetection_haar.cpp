@@ -200,7 +200,7 @@ void renderComponents (IplImage * SWTImage, std::vector<std::vector<Point2d> > &
 }
 
 void renderComponentsWithBoxes (IplImage * SWTImage, std::vector<std::vector<Point2d> > & components,
-                                std::vector<std::pair<Point2d,Point2d> > & compBB, IplImage * output) {
+                                std::vector<std::pair<Point2d,Point2d> > & compBB, IplImage * output, bool showBoxes) {
     IplImage * outTemp =
             cvCreateImage ( cvGetSize ( output ), IPL_DEPTH_32F, 1 );
 
@@ -221,15 +221,18 @@ void renderComponentsWithBoxes (IplImage * SWTImage, std::vector<std::vector<Poi
     //cvReleaseImage ( &outTemp );
     //cvReleaseImage ( &out );
 
-    int count = 0;
-    for (std::vector<std::pair<CvPoint,CvPoint> >::iterator it= bb.begin(); it != bb.end(); it++) {
-        CvScalar c;
-        if (count % 3 == 0) c=cvScalar(255,0,0);
-        else if (count % 3 == 1) c=cvScalar(0,255,0);
-        else c=cvScalar(0,0,255);
-        count++;
-        cvRectangle(output,it->first,it->second,c,2);
-    }
+	if (showBoxes)
+	{
+		int count = 0;
+		for (std::vector<std::pair<CvPoint,CvPoint> >::iterator it= bb.begin(); it != bb.end(); it++) {
+			CvScalar c;
+			if (count % 3 == 0) c=cvScalar(255,0,0);
+			else if (count % 3 == 1) c=cvScalar(0,255,0);
+			else c=cvScalar(0,0,255);
+			count++;
+			cvRectangle(output,it->first,it->second,c,2);
+		}
+	}
 }
 
 std::vector<std::pair<CvPoint,CvPoint>> renderChainsWithBoxes (IplImage * SWTImage,
@@ -314,12 +317,12 @@ void renderChains (IplImage * SWTImage,
 cv::Mat textDetection (cv::Mat matInput, std::string stepsDir, std::string imageName, bool dark_on_light)
 {
 	bool showCanny = true;
-	bool showGradient = true;
+	bool showGradient = false;
 	bool showSWT = true;
 	bool showComponents = true;
-	bool showChains = false;
-	bool showCvtColor = false;
-	bool showChainsWithBoxes = false;
+	bool showChains = true;
+	bool showCvtColor = true;
+	bool showChainsWithBoxes = true;
 
     std::cout << "Running textDetection with dark_on_light " << dark_on_light << std::endl;
 
@@ -424,17 +427,25 @@ cv::Mat textDetection (cv::Mat matInput, std::string stepsDir, std::string image
     std::vector<Point2d> compDimensions;
     filterComponents(SWTImage, components, validComponents, compCenters, compMedians, compDimensions, compBB );
 
-    IplImage * output3 =
+	IplImage * output3a =
             cvCreateImage ( cvGetSize ( input ), 8U, 3 );
-    renderComponentsWithBoxes (SWTImage, validComponents, compBB, output3);
+    renderComponentsWithBoxes (SWTImage, validComponents, compBB, output3a, false);
+
+    IplImage * output3b =
+            cvCreateImage ( cvGetSize ( input ), 8U, 3 );
+    renderComponentsWithBoxes (SWTImage, validComponents, compBB, output3b, true);
 
 	if (showComponents)
 	{
-		std::string componentsName = (stepsDir + "\\" + imageName + "_c.png");
-		cvSaveImage ( componentsName.c_str(),output3);
+		std::string componentsNameA = (stepsDir + "\\" + imageName + "_c-a.png");
+		cvSaveImage ( componentsNameA.c_str(),output3a);
+
+		std::string componentsNameB = (stepsDir + "\\" + imageName + "_c-b.png");
+		cvSaveImage ( componentsNameB.c_str(),output3b);
 	}
 
-    cvReleaseImage ( &output3 );
+	cvReleaseImage ( &output3a );
+    cvReleaseImage ( &output3b );
 
     // Make chains of components
     std::vector<Chain> chains;
@@ -636,6 +647,7 @@ void findLegallyConnectedComponents (IplImage * SWTImage,
         }
 
         Graph g(num_vertices);
+		float ratio = 3.0;
 
         for( int row = 0; row < SWTImage->height; row++ ){
             float * ptr = (float*)(SWTImage->imageData + row * SWTImage->widthStep);
@@ -645,13 +657,12 @@ void findLegallyConnectedComponents (IplImage * SWTImage,
                     int this_pixel = map[row * SWTImage->width + col];
                     if (col+1 < SWTImage->width) {
 
-                        float right = CV_IMAGE_ELEM(SWTImage, float, row, col+1);
-                        //if (right > 0 && ((*ptr)/right <= 3.0 && right/(*ptr) <= 3.0))  //modified by soda						
+                        float right = CV_IMAGE_ELEM(SWTImage, float, row, col+1);						
 						
 						if (*ptr >= right) { large = *ptr; small = right; }
 						else { large = right; small = *ptr; }
 
-						if (right > 0 && ((large/small) <= 3.0))
+						if (right > 0 && ((large/small) <= ratio))
                             boost::add_edge(this_pixel, map.at(row * SWTImage->width + col + 1), g);
                     }
 
@@ -659,22 +670,20 @@ void findLegallyConnectedComponents (IplImage * SWTImage,
                         if (col+1 < SWTImage->width) {
 
                             float right_down = CV_IMAGE_ELEM(SWTImage, float, row+1, col+1);
-                            //if (right_down > 0 && ((*ptr)/right_down <= 3.0 || right_down/(*ptr) <= 3.0)) //modified by soda
 
 							if (*ptr >= right_down) { large = *ptr; small = right_down; }
 							else { large = right_down; small = *ptr; }
 
-							if (right_down > 0 && ((large/small) <= 3.0))
+							if (right_down > 0 && ((large/small) <= ratio))
                                 boost::add_edge(this_pixel, map.at((row+1) * SWTImage->width + col + 1), g);
                         }
 
                         float down = CV_IMAGE_ELEM(SWTImage, float, row+1, col);
-                        //if (down > 0 && ((*ptr)/down <= 3.0 || down/(*ptr) <= 3.0)) //modified by soda
 						
 						if (*ptr >= down) { large = *ptr; small = down; }
 						else { large = down; small = *ptr; }
 
-						if (down > 0 && ((large/small) <= 3.0))
+						if (down > 0 && ((large/small) <= ratio))
                             boost::add_edge(this_pixel, map.at((row+1) * SWTImage->width + col), g);
 
                         if (col-1 >= 0) {
@@ -684,8 +693,7 @@ void findLegallyConnectedComponents (IplImage * SWTImage,
 							if (*ptr >= left_down) { large = *ptr; small = left_down; }
 							else { large = left_down; small = *ptr; }
 
-                            //if (left_down > 0 && ((*ptr)/left_down <= 3.0 && left_down/(*ptr) <= 3.0))  //modified by soda
-							if (left_down > 0 && ((large/small) <= 3.0))
+							if (left_down > 0 && ((large/small) <= ratio))
                                 boost::add_edge(this_pixel, map.at((row+1) * SWTImage->width + col - 1), g);
                         }
                     }
@@ -710,7 +718,7 @@ void findLegallyConnectedComponents (IplImage * SWTImage,
             (components[c[j]]).push_back(p);
         }
 
-		std::cout << "Finished creating components";
+		std::cout << "Finished creating components" << std::endl;
 
         //return components;
 }
@@ -767,17 +775,22 @@ void filterComponents(IplImage * SWTImage,
             int minx, miny, maxx, maxy;
             componentStats(SWTImage, (*it), mean, variance, median, minx, miny, maxx, maxy);
 
-            // check if variance is less than half the mean
-            if (variance > 0.5 * mean) {
-                 continue;
-            }
-
             float length = (float)(maxx-minx+1);
             float width = (float)(maxy-miny+1);
 
-            // check font height
-            if (width > 300) {
-                continue;
+            // check max font height
+            //if (width > 300) {
+            //    continue;
+            //}
+
+			// check min font height
+			if (width < 15){
+				continue;
+			}
+
+			// check if variance is less than half the mean
+            if (variance > 0.7 * mean) {
+                 continue;
             }
 
             float area = length * width;
@@ -951,21 +964,33 @@ std::vector<Chain> makeChains( IplImage * colorImage,
         colorAverages.push_back(mean);
     }
 
+	float largeMedian = 0;
+	float smallMedian = 0;
+	int largeHeight = 0;
+	int smallHeight = 0;
     // form all eligible pairs and calculate the direction of each
     std::vector<Chain> chains;
     for ( unsigned int i = 0; i < components.size(); i++ ) {
         for ( unsigned int j = i + 1; j < components.size(); j++ ) {
             // TODO add color metric
-            if ( (compMedians[i]/compMedians[j] <= 2.0 || compMedians[j]/compMedians[i] <= 2.0) &&
-                 (compDimensions[i].y/compDimensions[j].y <= 2.0 || compDimensions[j].y/compDimensions[i].y <= 2.0)) {
+			
+			if (compMedians[i] >= compMedians[j]) { largeMedian = compMedians[i]; smallMedian = compMedians[j]; }
+			else { largeMedian = compMedians[j]; smallMedian = compMedians[i]; }
+
+			if (compDimensions[i].y >= compDimensions[j].y) { largeHeight = compDimensions[i].y; smallHeight = compDimensions[j].y; }
+			else { largeHeight = compDimensions[j].y; smallHeight = compDimensions[i].y; }
+
+            if ( (largeMedian/smallMedian <= 2.0) && (largeHeight/smallHeight <= 2.0)) 
+			{
                 float dist = (compCenters[i].x - compCenters[j].x) * (compCenters[i].x - compCenters[j].x) +
                              (compCenters[i].y - compCenters[j].y) * (compCenters[i].y - compCenters[j].y);
                 float colorDist = (colorAverages[i].x - colorAverages[j].x) * (colorAverages[i].x - colorAverages[j].x) +
                                   (colorAverages[i].y - colorAverages[j].y) * (colorAverages[i].y - colorAverages[j].y) +
                                   (colorAverages[i].z - colorAverages[j].z) * (colorAverages[i].z - colorAverages[j].z);
-                if (dist < 9*(float)(std::max(std::min(compDimensions[i].x,compDimensions[i].y),std::min(compDimensions[j].x,compDimensions[j].y)))
+                if (dist < 3*(float)(std::max(std::min(compDimensions[i].x,compDimensions[i].y),std::min(compDimensions[j].x,compDimensions[j].y)))
                     *(float)(std::max(std::min(compDimensions[i].x,compDimensions[i].y),std::min(compDimensions[j].x,compDimensions[j].y)))
-                    && colorDist < 1600) {
+                    && colorDist < 1600) 
+				{
                     Chain c;
                     c.p = i;
                     c.q = j;
@@ -976,10 +1001,6 @@ std::vector<Chain> makeChains( IplImage * colorImage,
                     c.dist = dist;
                     float d_x = (compCenters[i].x - compCenters[j].x);
                     float d_y = (compCenters[i].y - compCenters[j].y);
-                    /*
-                    float d_x = (compBB[i].first.x - compBB[j].second.x);
-                    float d_y = (compBB[i].second.y - compBB[j].second.y);
-                    */
                     float mag = sqrt(d_x*d_x + d_y*d_y);
                     d_x = d_x / mag;
                     d_y = d_y / mag;
@@ -1018,22 +1039,7 @@ std::vector<Chain> makeChains( IplImage * colorImage,
                     if (!chains[i].merged && !chains[j].merged && sharesOneEnd(chains[i],chains[j])) {
                         if (chains[i].p == chains[j].p) {
                             if (acos(chains[i].direction.x * -chains[j].direction.x + chains[i].direction.y * -chains[j].direction.y) < strictness) {
-                                  /*      if (chains[i].p == chains[i].q || chains[j].p == chains[j].q) {
-                                            std::cout << "CRAZY ERROR" << std::endl;
-                                        } else if (chains[i].p == chains[j].p && chains[i].q == chains[j].q) {
-                                            std::cout << "CRAZY ERROR" << std::endl;
-                                        } else if (chains[i].p == chains[j].q && chains[i].q == chains[j].p) {
-                                            std::cout << "CRAZY ERROR" << std::endl;
-                                        }
-                                        std::cerr << 1 <<std::endl;
-
-                                        std::cerr << chains[i].p << " " << chains[i].q << std::endl;
-                                        std::cerr << chains[j].p << " " << chains[j].q << std::endl;
-                                std::cerr << compCenters[chains[i].q].x << " " << compCenters[chains[i].q].y << std::endl;
-                                std::cerr << compCenters[chains[i].p].x << " " << compCenters[chains[i].p].y << std::endl;
-                                std::cerr << compCenters[chains[j].q].x << " " << compCenters[chains[j].q].y << std::endl;
-                                std::cerr << std::endl; */
-
+                                  
                                 chains[i].p = chains[j].q;
                                 for (std::vector<int>::iterator it = chains[j].components.begin(); it != chains[j].components.end(); it++) {
                                     chains[i].components.push_back(*it);
@@ -1058,24 +1064,6 @@ std::vector<Chain> makeChains( IplImage * colorImage,
                             }
                         } else if (chains[i].p == chains[j].q) {
                             if (acos(chains[i].direction.x * chains[j].direction.x + chains[i].direction.y * chains[j].direction.y) < strictness) {
-/*
-                                if (chains[i].p == chains[i].q || chains[j].p == chains[j].q) {
-                                    std::cout << "CRAZY ERROR" << std::endl;
-                                } else if (chains[i].p == chains[j].p && chains[i].q == chains[j].q) {
-                                    std::cout << "CRAZY ERROR" << std::endl;
-                                } else if (chains[i].p == chains[j].q && chains[i].q == chains[j].p) {
-                                    std::cout << "CRAZY ERROR" << std::endl;
-                                }
-                                std::cerr << 2 <<std::endl;
-
-                                std::cerr << chains[i].p << " " << chains[i].q << std::endl;
-                                std::cerr << chains[j].p << " " << chains[j].q << std::endl;
-                                std::cerr << chains[i].direction.x << " " << chains[i].direction.y << std::endl;
-                                std::cerr << chains[j].direction.x << " " << chains[j].direction.y << std::endl;
-                                std::cerr << compCenters[chains[i].q].x << " " << compCenters[chains[i].q].y << std::endl;
-                                std::cerr << compCenters[chains[i].p].x << " " << compCenters[chains[i].p].y << std::endl;
-                                std::cerr << compCenters[chains[j].p].x << " " << compCenters[chains[j].p].y << std::endl;
-                                std::cerr << std::endl; */
 
                                 chains[i].p = chains[j].p;
                                 for (std::vector<int>::iterator it = chains[j].components.begin(); it != chains[j].components.end(); it++) {
@@ -1102,22 +1090,6 @@ std::vector<Chain> makeChains( IplImage * colorImage,
                             }
                         } else if (chains[i].q == chains[j].p) {
                             if (acos(chains[i].direction.x * chains[j].direction.x + chains[i].direction.y * chains[j].direction.y) < strictness) {
-     /*                           if (chains[i].p == chains[i].q || chains[j].p == chains[j].q) {
-                                    std::cout << "CRAZY ERROR" << std::endl;
-                                } else if (chains[i].p == chains[j].p && chains[i].q == chains[j].q) {
-                                    std::cout << "CRAZY ERROR" << std::endl;
-                                } else if (chains[i].p == chains[j].q && chains[i].q == chains[j].p) {
-                                    std::cout << "CRAZY ERROR" << std::endl;
-                                }
-                                std::cerr << 3 <<std::endl;
-
-                                std::cerr << chains[i].p << " " << chains[i].q << std::endl;
-                                std::cerr << chains[j].p << " " << chains[j].q << std::endl;
-
-                                std::cerr << compCenters[chains[i].p].x << " " << compCenters[chains[i].p].y << std::endl;
-                                std::cerr << compCenters[chains[i].q].x << " " << compCenters[chains[i].q].y << std::endl;
-                                std::cerr << compCenters[chains[j].q].x << " " << compCenters[chains[j].q].y << std::endl;
-                                std::cerr << std::endl; */
                                 chains[i].q = chains[j].q;
                                 for (std::vector<int>::iterator it = chains[j].components.begin(); it != chains[j].components.end(); it++) {
                                     chains[i].components.push_back(*it);
@@ -1144,20 +1116,7 @@ std::vector<Chain> makeChains( IplImage * colorImage,
                             }
                         } else if (chains[i].q == chains[j].q) {
                             if (acos(chains[i].direction.x * -chains[j].direction.x + chains[i].direction.y * -chains[j].direction.y) < strictness) {
-                     /*           if (chains[i].p == chains[i].q || chains[j].p == chains[j].q) {
-                                    std::cout << "CRAZY ERROR" << std::endl;
-                                } else if (chains[i].p == chains[j].p && chains[i].q == chains[j].q) {
-                                    std::cout << "CRAZY ERROR" << std::endl;
-                                } else if (chains[i].p == chains[j].q && chains[i].q == chains[j].p) {
-                                    std::cout << "CRAZY ERROR" << std::endl;
-                                }
-                                std::cerr << 4 <<std::endl;
-                                std::cerr << chains[i].p << " " << chains[i].q << std::endl;
-                                std::cerr << chains[j].p << " " << chains[j].q << std::endl;
-                                std::cerr << compCenters[chains[i].p].x << " " << compCenters[chains[i].p].y << std::endl;
-                                std::cerr << compCenters[chains[i].q].x << " " << compCenters[chains[i].q].y << std::endl;
-                                std::cerr << compCenters[chains[j].p].x << " " << compCenters[chains[j].p].y << std::endl;
-                                std::cerr << std::endl; */
+
                                 chains[i].q = chains[j].p;
                                 for (std::vector<int>::iterator it = chains[j].components.begin(); it != chains[j].components.end(); it++) {
                                     chains[i].components.push_back(*it);

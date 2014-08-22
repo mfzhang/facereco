@@ -2,7 +2,7 @@
 addpath 'C:\OCR\sample_images\';
 addpath 'C:\OCR\StepsOutput\';
 addpath 'C:\OCR\vsprojects\face_reco\haar\';
-colorImage1 = imread('_10_2_roi.png');
+colorImage1 = imread('_2_2_roi.png');
 colorImage2 = imread('_6_1_roi.png');
 colorImage3 = imread('_7_1_roi.png');
 colorImage4 = imread('_10_2_roi.png');
