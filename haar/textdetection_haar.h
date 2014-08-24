@@ -88,10 +88,11 @@ struct Chain {
 bool Point2dSort (Point2d const & lhs,
                   Point2d const & rhs);
 
-cv::Mat textDetection (cv::Mat float_input,
+std::vector<std::pair<CvPoint,CvPoint>> textDetection (cv::Mat float_input,
 						  std::string stepsDir,
 						  std::string imageName,
-                          bool dark_on_light);
+                          bool dark_on_light,
+						  std::pair<cv::Point,cv::Point> facePair);
 
 void strokeWidthTransform (IplImage * edgeImage,
                            IplImage * gradientX,
