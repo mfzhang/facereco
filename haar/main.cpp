@@ -1,6 +1,10 @@
 
 // Remove iterator checking
 #define _ITERATOR_DEBUG_LEVEL 0
+#define _CRT_SECURE_NO_WARNINGS
+// tesseract
+#include <tesseract/baseapi.h>
+#include <leptonica/allheaders.h>
 
 #include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
@@ -9,6 +13,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <Windows.h>
+#include <fstream>
 
 using namespace std;
 using namespace cv;
@@ -187,6 +192,26 @@ void detectAndDisplay( Mat image, std::string imageName, bool darkOnLight )
 			rectangle(image,it->first,it->second,Scalar(0, 0, 255), 2);
 		}
 	}
+
+	// OCR the different pieces
+	tesseract::TessBaseAPI api;
+    // Initialize tesseract-ocr with English, without specifying tessdata path
+    if (api.Init(NULL, "eng")) {
+        fprintf(stderr, "Could not initialize tesseract.\n");
+        exit(1);
+    }
+
+	cv::Mat ocrImage = imread(stepsDir + "\\_8_1_roi_bib2.png");
+
+	api.SetImage((uchar*)ocrImage.data, ocrImage.size().width, ocrImage.size().height, ocrImage.channels(), ocrImage.step1());
+	api.Recognize(0);
+	const char* ocrOut = api.GetUTF8Text();
+
+	//std::ofstream file;
+	//file.open(stepsDir + "\\output.txt");
+	//file << ocrOut;
+	//file.close();
+
 
 	//resize the image
 	cout << "Resizing image." << endl;

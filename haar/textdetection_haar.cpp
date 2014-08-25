@@ -16,6 +16,8 @@
     You should have received a copy of the GNU General Public License
     along with DetectText.  If not, see <http://www.gnu.org/licenses/>.
 */
+
+// boost
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/connected_components.hpp>
@@ -267,11 +269,10 @@ std::vector<std::pair<CvPoint,CvPoint>> renderChainsWithBoxes (IplImage * SWTIma
     std::vector<std::pair<CvPoint,CvPoint> > bb;
     bb = findBoundingBoxes(components, chains, compBB, outTemp);
 
-    IplImage * out =
+    IplImage * imageGray =
             cvCreateImage ( cvGetSize ( output ), IPL_DEPTH_8U, 1 );
-    cvConvertScale(outTemp, out, 255, 0);
-    cvCvtColor (out, output, CV_GRAY2RGB);
-    cvReleaseImage ( &out );
+    cvConvertScale(outTemp, imageGray, 255, 0);
+    cvCvtColor (imageGray, output, CV_GRAY2RGB);
     cvReleaseImage ( &outTemp);
 
     int count = 0;
@@ -283,7 +284,7 @@ std::vector<std::pair<CvPoint,CvPoint>> renderChainsWithBoxes (IplImage * SWTIma
         count++;
         cvRectangle(output,it->first,it->second,c,2);
 
-		// Save a region of interset image for OCR later
+		// Save a ROI image for OCR
 		std::cout << "Point1 (" << it->first.x << "," << it->first.y << ") Point2 (" << it->second.x << "," << it->second.y << ")" << std::endl;
 		CvRect rect;
 		rect.x = it->first.x;
@@ -291,13 +292,20 @@ std::vector<std::pair<CvPoint,CvPoint>> renderChainsWithBoxes (IplImage * SWTIma
 		rect.width = it->second.x - it->first.x;
 		rect.height = it->second.y - it->first.y;
 
-		IplImage* bibImage   = cvCloneImage(output);
-		cvSetImageROI(bibImage, rect);
+		IplImage *ocrImage = cvCreateImage(cvGetSize(imageGray),IPL_DEPTH_8U,1);
+
+		cvThreshold(imageGray, ocrImage, 254, 255, CV_THRESH_BINARY);
+
+		cvSetImageROI(ocrImage, rect);
+		std::string bibNameGray = imageName + "_bib" + std::to_string(count) + "_GRAY.png";
+		cvSaveImage(bibNameGray.c_str(), imageGray);
 		std::string bibName = imageName + "_bib" + std::to_string(count) + ".png";
-		cvSaveImage(bibName.c_str(), bibImage);
-		cvReleaseImage(&bibImage);
+		cvSaveImage(bibName.c_str(), ocrImage);
+		cvReleaseImage(&ocrImage);
+		
     }
 
+	cvReleaseImage(&imageGray);
 	return bb;
 }
 
