@@ -183,8 +183,10 @@ void detectAndDisplay( Mat image, std::string imageName, bool darkOnLight )
     }
 
 	// Draw boxes and identify numbers
+	int bibCount = 0;
 	for( size_t i = 0; i < bbListToFaceBodyList.size(); i++)
 	{
+		bibCount++;
 		cout << "Rendering text regions." << endl;
 		std::pair< std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>>, // bb to its ocr image pair
 				  std::pair<std::pair<Point,Point>,std::pair<Point,Point>>  // face and body pair
@@ -197,9 +199,10 @@ void detectAndDisplay( Mat image, std::string imageName, bool darkOnLight )
 		int topLeftY = bodyY - (faceBody.second.first.y - faceBody.second.second.y);
 		int topLeftX = bodyX;
 
-		
+		int componentCount = 0;
 		for (std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>>::iterator it= bbImageList.begin(); it != bbImageList.end(); it++) 
 		{
+			componentCount++;
 			it->first.first.x += topLeftX;
 			it->first.first.y += topLeftY;
 			it->first.second.x += topLeftX;
@@ -210,7 +213,7 @@ void detectAndDisplay( Mat image, std::string imageName, bool darkOnLight )
 			cout << "Identifying numbers." << endl;
 			// Identifiy the numbers
 			cv::Mat ocrImage = it->second;
-			imshow("ocrimage", ocrImage);
+			imshow("Bib: " + std::to_string(bibCount) + " Component: " + std::to_string(componentCount), ocrImage);
 
 			tesseract.SetImage((uchar*)ocrImage.data, ocrImage.size().width, ocrImage.size().height, ocrImage.channels(), ocrImage.step1());
 			tesseract.Recognize(0);
