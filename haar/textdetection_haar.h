@@ -88,7 +88,7 @@ struct Chain {
 bool Point2dSort (Point2d const & lhs,
                   Point2d const & rhs);
 
-std::vector<std::pair<CvPoint,CvPoint>> textDetection (cv::Mat float_input,
+std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> textDetection (cv::Mat float_input,
 						  std::string stepsDir,
 						  std::string imageName,
                           bool dark_on_light,

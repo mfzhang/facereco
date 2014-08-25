@@ -94,7 +94,9 @@ void detectAndDisplay( Mat image, std::string imageName, bool darkOnLight )
 	std::vector<Rect> profileFaces;
 	std::vector<std::pair<Point,Point>> bodyPoints;
 	std::vector<std::pair<Point,Point>> facePoints;
-	std::vector<std::pair<std::vector<std::pair<CvPoint,CvPoint>>, std::pair<std::pair<Point,Point>,std::pair<Point,Point>>>> bbListToFaceBodyList;
+	std::vector< std::pair< std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>>, // bb to its ocr image pair
+							std::pair<std::pair<Point,Point>,std::pair<Point,Point>>  // face and body pair
+			   >> bbListToFaceBodyList;
 	Mat frame_gray;
 	Mat resizedImage;
 
@@ -149,13 +151,15 @@ void detectAndDisplay( Mat image, std::string imageName, bool darkOnLight )
 		imwrite( roiName, imageROI);
 
 		std::pair<std::pair<Point,Point>,std::pair<Point,Point>> faceBodyPair(facePair, bodyPair);
-		std::vector<std::pair<CvPoint,CvPoint>> bbList;
+		std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> bbToOCRImageList;
 
 		cout << "Detecting Text"<< endl;
-		bbList = textDetection ( imageROI, stepsDir, imageName + "_" + std::to_string(i) + "_roi" , darkOnLight, facePair );
-		cout << "Done detexting Text. Found " << bbList.size() << " regions." << endl;
+		bbToOCRImageList = textDetection ( imageROI, stepsDir, imageName + "_" + std::to_string(i) + "_roi" , darkOnLight, facePair );
+		cout << "Done detexting Text. Found " << bbToOCRImageList.size() << " regions." << endl;
 
-		std::pair<std::vector<std::pair<CvPoint,CvPoint>>, std::pair<std::pair<Point,Point>,std::pair<Point,Point>>> bbListToFaceBody(bbList, faceBodyPair);
+		std::pair< std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>>, // bb to its ocr image pair
+				  std::pair<std::pair<Point,Point>,std::pair<Point,Point>>  // face and body pair
+				  > bbListToFaceBody(bbToOCRImageList, faceBodyPair);
 		facePoints.push_back(facePair);
 		bodyPoints.push_back(bodyPair);
 		bbListToFaceBodyList.push_back(bbListToFaceBody);
@@ -170,42 +174,59 @@ void detectAndDisplay( Mat image, std::string imageName, bool darkOnLight )
 		rectangle(image, facePoints.at(i).first, facePoints.at(i).second, Scalar( 255, 0, 0 ), 2);
 	}
 
-	// Render the bounded boxes
-	cout << "Rendering text regions." << endl;
+	// Initialize Tesseract
+	tesseract::TessBaseAPI tesseract;
+    // Initialize tesseract-ocr with English, without specifying tessdata path
+    if (tesseract.Init(NULL, "eng")) {
+        cout << " ERROR: Could not initialize tesseract.\n" << endl;
+        exit(1);
+    }
+
+	// Draw boxes and identify numbers
 	for( size_t i = 0; i < bbListToFaceBodyList.size(); i++)
 	{
-		std::pair<std::vector<std::pair<CvPoint,CvPoint>>, std::pair<std::pair<Point,Point>,std::pair<Point,Point>>> bbListToFaceBody = bbListToFaceBodyList.at(i);
-		std::vector<std::pair<CvPoint,CvPoint>> bb = bbListToFaceBody.first;
+		cout << "Rendering text regions." << endl;
+		std::pair< std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>>, // bb to its ocr image pair
+				  std::pair<std::pair<Point,Point>,std::pair<Point,Point>>  // face and body pair
+				  > bbListToFaceBody = bbListToFaceBodyList.at(i);
+		std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> bbImageList = bbListToFaceBody.first;
 		std::pair<std::pair<Point,Point>,std::pair<Point,Point>> faceBody = bbListToFaceBody.second;
 
 		int bodyX = faceBody.second.first.x;
 		int bodyY = faceBody.second.first.y;
 		int topLeftY = bodyY - (faceBody.second.first.y - faceBody.second.second.y);
 		int topLeftX = bodyX;
-		for (std::vector<std::pair<CvPoint,CvPoint>>::iterator it= bb.begin(); it != bb.end(); it++) 
-		{
-			it->first.x += topLeftX;
-			it->first.y += topLeftY;
-			it->second.x += topLeftX;
-			it->second.y += topLeftY;
 
-			rectangle(image,it->first,it->second,Scalar(0, 0, 255), 2);
+		
+		for (std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>>::iterator it= bbImageList.begin(); it != bbImageList.end(); it++) 
+		{
+			it->first.first.x += topLeftX;
+			it->first.first.y += topLeftY;
+			it->first.second.x += topLeftX;
+			it->first.second.y += topLeftY;
+
+			rectangle(image,it->first.first,it->first.second,Scalar(0, 0, 255), 2);
+
+			cout << "Identifying numbers." << endl;
+			// Identifiy the numbers
+			cv::Mat ocrImage = it->second;
+			imshow("ocrimage", ocrImage);
+
+			tesseract.SetImage((uchar*)ocrImage.data, ocrImage.size().width, ocrImage.size().height, ocrImage.channels(), ocrImage.step1());
+			tesseract.Recognize(0);
+			const char* ocrOut = tesseract.GetUTF8Text();
+			std::string ocrOutString(ocrOut);
+			
+			ocrOutString.erase(std::remove(ocrOutString.begin(), ocrOutString.end(), '\n'), ocrOutString.end());			
+			putText(image, ocrOutString, faceBody.second.first,FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 0, 255), 2);
+			
+			cout << "Identified Bib: " << ocrOutString << endl;
+			delete [] ocrOut;
 		}
 	}
 
-	// OCR the different pieces
-	tesseract::TessBaseAPI api;
-    // Initialize tesseract-ocr with English, without specifying tessdata path
-    if (api.Init(NULL, "eng")) {
-        fprintf(stderr, "Could not initialize tesseract.\n");
-        exit(1);
-    }
-
-	cv::Mat ocrImage = imread(stepsDir + "\\_8_1_roi_bib2.png");
-
-	api.SetImage((uchar*)ocrImage.data, ocrImage.size().width, ocrImage.size().height, ocrImage.channels(), ocrImage.step1());
-	api.Recognize(0);
-	const char* ocrOut = api.GetUTF8Text();
+	// Release memory
+	tesseract.End();
 
 	//std::ofstream file;
 	//file.open(stepsDir + "\\output.txt");

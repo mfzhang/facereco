@@ -237,12 +237,12 @@ void renderComponentsWithBoxes (IplImage * SWTImage, std::vector<std::vector<Poi
 	}
 }
 
-std::vector<std::pair<CvPoint,CvPoint>> renderChainsWithBoxes (IplImage * SWTImage,
+void renderChainsWithBoxes (IplImage * SWTImage,
                    std::vector<std::vector<Point2d> > & components,
                    std::vector<Chain> & chains,
                    std::vector<std::pair<Point2d,Point2d> > & compBB,
                    IplImage * output,
-				   std::vector<IplImage *> & componentImages,
+				   std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> & bbToOCRImageList,
 				   std::string imageName) {
     // keep track of included components
     std::vector<bool> included;
@@ -281,7 +281,6 @@ std::vector<std::pair<CvPoint,CvPoint>> renderChainsWithBoxes (IplImage * SWTIma
         if (count % 3 == 0) c=cvScalar(255,0,0);
         else if (count % 3 == 1) c=cvScalar(0,255,0);
         else c=cvScalar(0,0,255);
-        count++;
         cvRectangle(output,it->first,it->second,c,2);
 
 		// Save a ROI image for OCR
@@ -297,16 +296,22 @@ std::vector<std::pair<CvPoint,CvPoint>> renderChainsWithBoxes (IplImage * SWTIma
 		cvThreshold(imageGray, ocrImage, 254, 255, CV_THRESH_BINARY);
 
 		cvSetImageROI(ocrImage, rect);
-		std::string bibNameGray = imageName + "_bib" + std::to_string(count) + "_GRAY.png";
-		cvSaveImage(bibNameGray.c_str(), imageGray);
+		//std::string bibNameGray = imageName + "_bib" + std::to_string(count) + "_GRAY.png";
+		//cvSaveImage(bibNameGray.c_str(), imageGray);
 		std::string bibName = imageName + "_bib" + std::to_string(count) + ".png";
 		cvSaveImage(bibName.c_str(), ocrImage);
+
+		cv::Mat ocrMat(ocrImage);
+
+		std::pair<std::pair<CvPoint,CvPoint>, cv::Mat> bbToImage(bb.at(count), ocrMat.clone());
+		bbToOCRImageList.push_back(bbToImage);
 		cvReleaseImage(&ocrImage);
+		count++;
 		
     }
 
 	cvReleaseImage(&imageGray);
-	return bb;
+	//return bb;
 }
 
 void renderChains (IplImage * SWTImage,
@@ -338,7 +343,7 @@ void renderChains (IplImage * SWTImage,
 	cvReleaseImage(&outTemp);
 }
 
-std::vector<std::pair<CvPoint,CvPoint>> textDetection (cv::Mat matInput, std::string stepsDir, std::string imageName, bool dark_on_light, std::pair<cv::Point,cv::Point> facePair)
+std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> textDetection (cv::Mat matInput, std::string stepsDir, std::string imageName, bool dark_on_light, std::pair<cv::Point,cv::Point> facePair)
 {
 	bool showCanny = true;
 	bool showGradient = false;
@@ -498,10 +503,10 @@ std::vector<std::pair<CvPoint,CvPoint>> textDetection (cv::Mat matInput, std::st
 
     IplImage * output6 =
             cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 3 );
-    std::vector<std::pair<CvPoint,CvPoint>> bbList;
-	std::vector<IplImage *> componentImages;
+    //std::vector<std::pair<CvPoint,CvPoint>> bbList;
+	std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> bbToOCRImageList;
 	std::string imagePath = stepsDir + "\\_" + imageName;
-	bbList = renderChainsWithBoxes ( SWTImage, validComponents, chains, compBB, output6, componentImages, imagePath);
+	renderChainsWithBoxes ( SWTImage, validComponents, chains, compBB, output6, bbToOCRImageList, imagePath);
 
 
 
@@ -522,11 +527,11 @@ std::vector<std::pair<CvPoint,CvPoint>> textDetection (cv::Mat matInput, std::st
     //cvReleaseImage ( &edgeImage );
 	//cvReleaseImage( &input );
 
-	cv::Mat output6Mat(output6);
+	//cv::Mat output6Mat(output6);
 
 	cvReleaseImage( &output6);
 
-    return bbList;
+    return bbToOCRImageList;
 }
 
 void strokeWidthTransform (IplImage * edgeImage,
