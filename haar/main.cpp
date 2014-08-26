@@ -14,6 +14,9 @@
 #include <stdio.h>
 #include <Windows.h>
 #include <fstream>
+#include <math.h>
+#include <functional>   // std::minus
+#include <numeric>
 
 using namespace std;
 using namespace cv;
@@ -33,7 +36,8 @@ RNG rng(12345);
 
 Point GetFacePoint(Rect &faces, bool bottomLeft);
 Point GetBodyPoint(Rect &faces, Mat inputImage, bool bottomLeft);
-void RemoveAboveAndBelowDetections(std::vector<Rect> &faces);
+void FilterFaces(std::vector<Rect> &faces);
+double CalculateFacesMean(std::vector<Rect> &faces);
 
 /** @function main */
 int main( int argc, const char** argv )
@@ -119,7 +123,7 @@ void detectAndDisplay( Mat image, std::string imageName, bool darkOnLight )
 	faces.insert(faces.end(), profileFaces.begin(), profileFaces.end());
 
 	// remove faces above or below a bigger one
-	RemoveAboveAndBelowDetections(faces);
+	FilterFaces(faces);
 
 	for( size_t i = 0; i < faces.size(); i++ )
 	{
@@ -138,11 +142,11 @@ void detectAndDisplay( Mat image, std::string imageName, bool darkOnLight )
 
 		// Get region of interest
 		int width = bodyPoint2.x - bodyPoint1.x;
-		int height = bodyPoint1.y - bodyPoint2.y;
+		int height = bodyPoint2.y - bodyPoint1.y;
 		if (width < 1 || height < 1) continue;
 
-		Rect regionOfInterest = Rect(bodyPoint1.x, bodyPoint2.y, width, height);
-		cout << "Getting Image ROI @ " << bodyPoint1.x << "," << bodyPoint2.y << " width: " <<  (bodyPoint2.x - bodyPoint1.x) << " height: " << (bodyPoint1.y - bodyPoint2.y) <<endl;
+		Rect regionOfInterest = Rect(bodyPoint1.x, bodyPoint1.y, width, height);
+		cout << "Getting Image ROI @ " << bodyPoint1.x << "," << bodyPoint1.y << " width: " <<  width << " height: " << height <<endl;
 		Mat imageROI = image( regionOfInterest );
 		//imshow("ROI", imageROI);
 
@@ -181,6 +185,8 @@ void detectAndDisplay( Mat image, std::string imageName, bool darkOnLight )
         cout << " ERROR: Could not initialize tesseract.\n" << endl;
         exit(1);
     }
+	tesseract.SetVariable("tessedit_char_whitelist", "0123456789");
+	tesseract.SetPageSegMode(tesseract::PSM_SINGLE_WORD);
 
 	// Draw boxes and identify numbers
 	int bibCount = 0;
@@ -196,23 +202,36 @@ void detectAndDisplay( Mat image, std::string imageName, bool darkOnLight )
 
 		int bodyX = faceBody.second.first.x;
 		int bodyY = faceBody.second.first.y;
-		int topLeftY = bodyY - (faceBody.second.first.y - faceBody.second.second.y);
-		int topLeftX = bodyX;
+		//int topLeftY = bodyY - (faceBody.second.first.y - faceBody.second.second.y);
+		//int topLeftX = bodyX;
 
 		int componentCount = 0;
 		for (std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>>::iterator it= bbImageList.begin(); it != bbImageList.end(); it++) 
 		{
 			componentCount++;
-			it->first.first.x += topLeftX;
-			it->first.first.y += topLeftY;
-			it->first.second.x += topLeftX;
-			it->first.second.y += topLeftY;
+			it->first.first.x += bodyX;
+			it->first.first.y += bodyY;
+			it->first.second.x += bodyX;
+			it->first.second.y += bodyY;
 
 			rectangle(image,it->first.first,it->first.second,Scalar(0, 0, 255), 2);
 
 			cout << "Identifying numbers." << endl;
 			// Identifiy the numbers
-			cv::Mat ocrImage = it->second;
+			cv::Mat ocrImage;
+			int erosionSize = 0;
+			Mat element = getStructuringElement( MORPH_ELLIPSE,
+                                       Size( erosionSize + 1, erosionSize + 1 ),
+                                       Point( erosionSize, erosionSize ) );
+			// Erode the image
+			erode( it->second, ocrImage, element );
+			// Put border around image
+			int top = (int) (0.05*ocrImage.rows);
+			int bottom = (int) (0.05*ocrImage.rows);
+			int left = (int) (0.05*ocrImage.cols);
+			int right = (int) (0.05*ocrImage.cols);
+			copyMakeBorder(ocrImage, ocrImage, top, bottom, left, right, BORDER_CONSTANT, Scalar(255,255,255));
+
 			imshow("Bib: " + std::to_string(bibCount) + " Component: " + std::to_string(componentCount), ocrImage);
 
 			tesseract.SetImage((uchar*)ocrImage.data, ocrImage.size().width, ocrImage.size().height, ocrImage.channels(), ocrImage.step1());
@@ -220,8 +239,10 @@ void detectAndDisplay( Mat image, std::string imageName, bool darkOnLight )
 			const char* ocrOut = tesseract.GetUTF8Text();
 			std::string ocrOutString(ocrOut);
 			
+			int fontHeight = 25 * componentCount;
+			cv::Point textPoint(faceBody.second.first.x, faceBody.second.first.y + fontHeight);
 			ocrOutString.erase(std::remove(ocrOutString.begin(), ocrOutString.end(), '\n'), ocrOutString.end());			
-			putText(image, ocrOutString, faceBody.second.first,FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 0, 255), 2);
+			putText(image, ocrOutString, textPoint,FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 0, 255), 2);
 			
 			cout << "Identified Bib: " << ocrOutString << endl;
 			delete [] ocrOut;
@@ -266,7 +287,7 @@ Point GetFacePoint(Rect &faces, bool bottomLeft)
 		return facePoint2;
 }
 
-Point GetBodyPoint(Rect &faces, Mat inputImage, bool bottomLeft)
+Point GetBodyPoint(Rect &faces, Mat inputImage, bool topLeft)
 {
 	float faceSubtract = ceil(faces.width * 0.2);
 	float newFaceWidth = (faces.width - faceSubtract);
@@ -277,9 +298,9 @@ Point GetBodyPoint(Rect &faces, Mat inputImage, bool bottomLeft)
 	float bodyWidth = 3 * newFaceWidth;
 	float bodyHeight = 4 * faceHeight;
 	int bodyX = floor(centerOfFaceBottomX - (bodyWidth / 2));
-	int bodyY = floor(faces.y + bodyHeight + (1.5 * faceHeight));
+	int bodyY = floor(faces.y + (1.5 * faceHeight));
 	int body2X = bodyX + bodyWidth;
-	int body2Y = bodyY - bodyHeight;
+	int body2Y = bodyY + bodyHeight;
 
 	if (bodyX < 0) bodyX = 1;
 	if (bodyX > inputImage.size().width) bodyX = inputImage.size().width;
@@ -294,14 +315,15 @@ Point GetBodyPoint(Rect &faces, Mat inputImage, bool bottomLeft)
 	Point bodyPoint1 = Point(bodyX, bodyY);
 	Point bodyPoint2 = Point(body2X, body2Y);
 
-	if (bottomLeft)
+	if (topLeft)
 		return bodyPoint1;
 	else
 		return bodyPoint2;
 }
 
-void RemoveAboveAndBelowDetections(std::vector<Rect> &faces)
+void FilterFaces(std::vector<Rect> &faces)
 {
+	double mean = CalculateFacesMean(faces);
 
 	for( size_t i = 0; i < faces.size(); i++ )
 	{
@@ -310,8 +332,9 @@ void RemoveAboveAndBelowDetections(std::vector<Rect> &faces)
 
 		for( size_t x = 0; x < faces.size(); x++ )
 		{
-			if (faces[x].width < faceWidth
-				&& (faces[x].x >= faceX && (faces[x].x + faces[x].width) < (faceX + faceWidth)))
+			if ((faces[x].width < faceWidth && (faces[x].x >= faceX && (faces[x].x + faces[x].width) < (faceX + faceWidth))) // check if one is inside another
+				|| ((faces[x].width * faces[x].height) < mean) // check if one is smaller than mean
+			   )
 			{
 				faces.erase(faces.begin() + x);
 				i = 0;
@@ -319,4 +342,15 @@ void RemoveAboveAndBelowDetections(std::vector<Rect> &faces)
 		}
 	}
 
+}
+
+double CalculateFacesMean(std::vector<Rect> &faces)
+{
+	double sum = 0;
+	for( size_t i = 0; i < faces.size(); i++ )
+	{
+		sum += (faces[i].width * faces[i].height);
+	}
+
+	return (sum / faces.size());
 }
