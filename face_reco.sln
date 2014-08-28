@@ -15,6 +15,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "canny", "canny\canny.vcxpro
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gradient", "gradient\gradient.vcxproj", "{EC645FD9-095D-41F7-AD51-19368DD91100}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thresh", "thresh\thresh.vcxproj", "{8CBABB16-7672-4225-9E3F-4D1D6DED92FB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Mixed Platforms = Debug|Mixed Platforms
@@ -97,6 +99,16 @@ Global
 		{EC645FD9-095D-41F7-AD51-19368DD91100}.Release|Win32.ActiveCfg = Release|Win32
 		{EC645FD9-095D-41F7-AD51-19368DD91100}.Release|Win32.Build.0 = Release|Win32
 		{EC645FD9-095D-41F7-AD51-19368DD91100}.Release|x64.ActiveCfg = Release|Win32
+		{8CBABB16-7672-4225-9E3F-4D1D6DED92FB}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
+		{8CBABB16-7672-4225-9E3F-4D1D6DED92FB}.Debug|Mixed Platforms.Build.0 = Debug|Win32
+		{8CBABB16-7672-4225-9E3F-4D1D6DED92FB}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8CBABB16-7672-4225-9E3F-4D1D6DED92FB}.Debug|Win32.Build.0 = Debug|Win32
+		{8CBABB16-7672-4225-9E3F-4D1D6DED92FB}.Debug|x64.ActiveCfg = Debug|Win32
+		{8CBABB16-7672-4225-9E3F-4D1D6DED92FB}.Release|Mixed Platforms.ActiveCfg = Release|x64
+		{8CBABB16-7672-4225-9E3F-4D1D6DED92FB}.Release|Mixed Platforms.Build.0 = Release|x64
+		{8CBABB16-7672-4225-9E3F-4D1D6DED92FB}.Release|Win32.ActiveCfg = Release|Win32
+		{8CBABB16-7672-4225-9E3F-4D1D6DED92FB}.Release|Win32.Build.0 = Release|Win32
+		{8CBABB16-7672-4225-9E3F-4D1D6DED92FB}.Release|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

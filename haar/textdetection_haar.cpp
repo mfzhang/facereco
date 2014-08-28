@@ -74,6 +74,9 @@ const ccv_swt_param_t ccv_swt_default_params = {
 	0.8 //same_word_thresh2
 };
 
+std::string stepsDirGlobal;
+std::string imageNameGlobal;
+
 std::vector<std::pair<CvPoint,CvPoint> > findBoundingBoxes( std::vector<std::vector<Point2d> > & components,
                                                            std::vector<Chain> & chains,
                                                            std::vector<std::pair<Point2d,Point2d> > & compBB,
@@ -353,6 +356,9 @@ std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> textDetection (cv::M
 	bool showCvtColor = true;
 	bool showChainsWithBoxes = true;
 
+	stepsDirGlobal = stepsDir;
+	imageNameGlobal = imageName;
+
     std::cout << "Running textDetection with dark_on_light " << dark_on_light << std::endl;
 
 
@@ -370,6 +376,10 @@ std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> textDetection (cv::M
 
   /// Reduce noise with a kernel 3x3
   cv::blur( srcGrayMat, edgeImageMat, cv::Size(3,3) );
+
+  cv::threshold(edgeImageMat, edgeImageMat, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+  std::string threshName = (stepsDir + "\\_" + imageName + "_otsu.png");
+  imwrite(threshName.c_str(), edgeImageMat);
 
   /// Canny detector
   int lowThreshold = 50;
@@ -453,7 +463,7 @@ std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> textDetection (cv::M
     std::vector<Point2dFloat> compCenters;
     std::vector<float> compMedians;
     std::vector<Point2d> compDimensions;
-    filterComponents(SWTImage, components, validComponents, compCenters, compMedians, compDimensions, compBB );
+    filterComponents(SWTImage, components, validComponents, compCenters, compMedians, compDimensions, compBB, facePair );
 
 	IplImage * output3a =
             cvCreateImage ( cvGetSize ( input ), 8U, 3 );
@@ -477,7 +487,7 @@ std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> textDetection (cv::M
 
     // Make chains of components
     std::vector<Chain> chains;
-    chains = makeChains(input, validComponents, compCenters, compMedians, compDimensions, compBB);
+    chains = makeChains(SWTImage, input, validComponents, compCenters, compMedians, compDimensions, compBB);
 
     IplImage * output4 =
             cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_32F, 1 );
@@ -798,7 +808,8 @@ void filterComponents(IplImage * SWTImage,
                       std::vector<Point2dFloat> & compCenters,
                       std::vector<float> & compMedians,
                       std::vector<Point2d> & compDimensions,
-                      std::vector<std::pair<Point2d,Point2d> > & compBB )
+                      std::vector<std::pair<Point2d,Point2d> > & compBB,
+					  std::pair<cv::Point,cv::Point> facePair)
 {
         validComponents.reserve(components.size());
         compCenters.reserve(components.size());
@@ -815,6 +826,9 @@ void filterComponents(IplImage * SWTImage,
             float length = (float)(maxx-minx+1);
             float width = (float)(maxy-miny+1);
 
+			// compare with face scale
+			double faceScale = ((facePair.second.x - facePair.first.x) * (facePair.second.y - facePair.first.y));
+
             // check max font height
             //if (width > 300) {
             //    continue;
@@ -826,9 +840,9 @@ void filterComponents(IplImage * SWTImage,
 			}
 
 			// check if variance is less than half the mean
-            if (variance > 0.7 * mean) {
+            /*if (variance > 0.7 * mean) {
                  continue;
-            }
+            }*/
 
             float area = length * width;
             float rminx = (float)minx;
@@ -973,7 +987,8 @@ bool chainSortLength (const Chain &lhs, const Chain &rhs) {
     return lhs.components.size() > rhs.components.size();
 }
 
-std::vector<Chain> makeChains( IplImage * colorImage,
+std::vector<Chain> makeChains( IplImage * SWTImage,
+				IplImage * colorImage,
                  std::vector<std::vector<Point2d> > & components,
                  std::vector<Point2dFloat> & compCenters,
                  std::vector<float> & compMedians,
@@ -1010,12 +1025,14 @@ std::vector<Chain> makeChains( IplImage * colorImage,
     for ( unsigned int i = 0; i < components.size(); i++ ) {
         for ( unsigned int j = i + 1; j < components.size(); j++ ) {
             // TODO add color metric
-			
+
 			if (compMedians[i] >= compMedians[j]) { largeMedian = compMedians[i]; smallMedian = compMedians[j]; }
 			else { largeMedian = compMedians[j]; smallMedian = compMedians[i]; }
 
 			if (compDimensions[i].y >= compDimensions[j].y) { largeHeight = compDimensions[i].y; smallHeight = compDimensions[j].y; }
 			else { largeHeight = compDimensions[j].y; smallHeight = compDimensions[i].y; }
+
+			//std::cout << "[MakeChains] Comparing Height: " << largeHeight << " : " << smallHeight << " and Median: " << largeMedian << " : " << smallMedian << std::endl;  
 
             if ( (largeMedian/smallMedian <= 2.0) && (largeHeight/smallHeight <= 2.0)) 
 			{
@@ -1024,9 +1041,10 @@ std::vector<Chain> makeChains( IplImage * colorImage,
                 float colorDist = (colorAverages[i].x - colorAverages[j].x) * (colorAverages[i].x - colorAverages[j].x) +
                                   (colorAverages[i].y - colorAverages[j].y) * (colorAverages[i].y - colorAverages[j].y) +
                                   (colorAverages[i].z - colorAverages[j].z) * (colorAverages[i].z - colorAverages[j].z);
-                if (dist < 3*(float)(std::max(std::min(compDimensions[i].x,compDimensions[i].y),std::min(compDimensions[j].x,compDimensions[j].y)))
+                if (dist < 5*(float)(std::max(std::min(compDimensions[i].x,compDimensions[i].y),std::min(compDimensions[j].x,compDimensions[j].y)))
                     *(float)(std::max(std::min(compDimensions[i].x,compDimensions[i].y),std::min(compDimensions[j].x,compDimensions[j].y)))
-                    && colorDist < 1600) 
+                    && 
+					colorDist < 2000) 
 				{
                     Chain c;
                     c.p = i;
@@ -1060,8 +1078,16 @@ std::vector<Chain> makeChains( IplImage * colorImage,
     std::cout << chains.size() << " eligible pairs" << std::endl;
     std::sort(chains.begin(), chains.end(), &chainSortDist);
 
+	IplImage * outputChainsPre =
+            cvCreateImage ( cvGetSize ( SWTImage ), IPL_DEPTH_8U, 3 );
+	std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> bbToOCRImageList;
+	std::string imagePath = stepsDirGlobal + "\\_" + imageNameGlobal;
+    renderChainsWithBoxes ( SWTImage, components, chains, compBB, outputChainsPre, bbToOCRImageList, imagePath);
+	std::string chainsName = (stepsDirGlobal + "\\" + imageNameGlobal + "_d-a.png");
+	cvSaveImage ( chainsName.c_str(), outputChainsPre);
+
     std::cerr << std::endl;
-    const float strictness = PI/6.0;
+    const float strictness = PI/1.0;
     //merge chains
     int merges = 1;
     while (merges > 0) {
@@ -1076,7 +1102,8 @@ std::vector<Chain> makeChains( IplImage * colorImage,
                     if (!chains[i].merged && !chains[j].merged && sharesOneEnd(chains[i],chains[j])) {
                         if (chains[i].p == chains[j].p) {
                             if (acos(chains[i].direction.x * -chains[j].direction.x + chains[i].direction.y * -chains[j].direction.y) < strictness) {
-                                  
+
+                                std::cout << "merging i: " << i << " and j: " << j << std::endl;
                                 chains[i].p = chains[j].q;
                                 for (std::vector<int>::iterator it = chains[j].components.begin(); it != chains[j].components.end(); it++) {
                                     chains[i].components.push_back(*it);
@@ -1102,6 +1129,7 @@ std::vector<Chain> makeChains( IplImage * colorImage,
                         } else if (chains[i].p == chains[j].q) {
                             if (acos(chains[i].direction.x * chains[j].direction.x + chains[i].direction.y * chains[j].direction.y) < strictness) {
 
+								std::cout << "merging i: " << i << " and j: " << j << std::endl;
                                 chains[i].p = chains[j].p;
                                 for (std::vector<int>::iterator it = chains[j].components.begin(); it != chains[j].components.end(); it++) {
                                     chains[i].components.push_back(*it);
@@ -1127,6 +1155,8 @@ std::vector<Chain> makeChains( IplImage * colorImage,
                             }
                         } else if (chains[i].q == chains[j].p) {
                             if (acos(chains[i].direction.x * chains[j].direction.x + chains[i].direction.y * chains[j].direction.y) < strictness) {
+
+								std::cout << "merging i: " << i << " and j: " << j << std::endl;
                                 chains[i].q = chains[j].q;
                                 for (std::vector<int>::iterator it = chains[j].components.begin(); it != chains[j].components.end(); it++) {
                                     chains[i].components.push_back(*it);
@@ -1154,6 +1184,7 @@ std::vector<Chain> makeChains( IplImage * colorImage,
                         } else if (chains[i].q == chains[j].q) {
                             if (acos(chains[i].direction.x * -chains[j].direction.x + chains[i].direction.y * -chains[j].direction.y) < strictness) {
 
+								std::cout << "merging i: " << i << " and j: " << j << std::endl;
                                 chains[i].q = chains[j].p;
                                 for (std::vector<int>::iterator it = chains[j].components.begin(); it != chains[j].components.end(); it++) {
                                     chains[i].components.push_back(*it);
@@ -1193,7 +1224,7 @@ std::vector<Chain> makeChains( IplImage * colorImage,
     std::vector<Chain> newchains;
     newchains.reserve(chains.size());
     for (std::vector<Chain>::iterator cit = chains.begin(); cit != chains.end(); cit++) {
-        if (cit->components.size() >= 3) {
+        if (cit->components.size() >= 2) {
             newchains.push_back(*cit);
         }
     }

@@ -38,6 +38,7 @@ Point GetFacePoint(Rect &faces, bool bottomLeft);
 Point GetBodyPoint(Rect &faces, Mat inputImage, bool bottomLeft);
 void FilterFaces(std::vector<Rect> &faces);
 double CalculateFacesMean(std::vector<Rect> &faces);
+Mat ResizeImageAspectRatio(Mat origImage, int newWidth, int newHeight);
 
 /** @function main */
 int main( int argc, const char** argv )
@@ -105,11 +106,17 @@ void detectAndDisplay( Mat image, std::string imageName, bool darkOnLight )
 	Mat resizedImage;
 
 	//resize the image
-	if (image.cols >= 500 && image.rows >= 500)
+	/*if (image.cols >= 2000 || image.rows >= 2000)
 	{
-		Size size(image.cols * 0.5, image.rows * 0.5);
+		Size size(image.cols * 0.2, image.rows * 0.2);
 		resize(image, image, size);
+	}*/
+	if (((float)image.cols / (float)image.rows) < 1 )
+	{
+		image = ResizeImageAspectRatio(image, 0, 1000);
 	}
+
+	cout << "Image size: width: " << image.cols << " height: " << image.rows << endl;
 
 	cvtColor( image, frame_gray, CV_BGR2GRAY );
 	equalizeHist( frame_gray, frame_gray );
@@ -242,7 +249,7 @@ void detectAndDisplay( Mat image, std::string imageName, bool darkOnLight )
 			int fontHeight = 25 * componentCount;
 			cv::Point textPoint(faceBody.second.first.x, faceBody.second.first.y + fontHeight);
 			ocrOutString.erase(std::remove(ocrOutString.begin(), ocrOutString.end(), '\n'), ocrOutString.end());			
-			putText(image, ocrOutString, textPoint,FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 0, 255), 2);
+			putText(image, ocrOutString, textPoint,FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 4);
 			
 			cout << "Identified Bib: " << ocrOutString << endl;
 			delete [] ocrOut;
@@ -259,9 +266,17 @@ void detectAndDisplay( Mat image, std::string imageName, bool darkOnLight )
 
 
 	//resize the image
-	cout << "Resizing image." << endl;
-	Size size(image.cols * 0.7, image.rows * 0.7);
-	resize(image, image, size);
+	//cout << "Resizing image." << endl;
+	//if (image.cols >= 2000 || image.rows >= 2000)
+	//{
+	//	Size size(image.cols * 0.3, image.rows * 0.3);
+	//	resize(image, image, size);
+	//}
+	//else if (image.cols >= 1000 || image.rows >= 1000)
+	//{
+	//	Size size(image.cols * 0.3, image.rows * 0.3);
+	//	resize(image, image, size);
+	//}
 
 	//create buttons
 	//cvNamedWindow("main",CV_WINDOW_NORMAL | CV_GUI_EXPANDED);
@@ -271,7 +286,7 @@ void detectAndDisplay( Mat image, std::string imageName, bool darkOnLight )
 	imshow( "main", image );
 }
 
-Point GetFacePoint(Rect &faces, bool bottomLeft)
+Point GetFacePoint(Rect &faces, bool topLeft)
 {
 	float faceSubtract = ceil(faces.width * 0.2);
 	float newFaceWidth = (faces.width - faceSubtract);
@@ -281,7 +296,7 @@ Point GetFacePoint(Rect &faces, bool bottomLeft)
 	Point facePoint1 = Point(faceX, faceY);
 	Point facePoint2 = Point(faceX + newFaceWidth, faceY + faceHeight);
 
-	if (bottomLeft)
+	if (topLeft)
 		return facePoint1;
 	else
 		return facePoint2;
@@ -296,7 +311,7 @@ Point GetBodyPoint(Rect &faces, Mat inputImage, bool topLeft)
 	int faceY = floor(faces.y);
 	float centerOfFaceBottomX = (faceX + (newFaceWidth / 2));
 	float bodyWidth = 3 * newFaceWidth;
-	float bodyHeight = 4 * faceHeight;
+	float bodyHeight = 4.5 * faceHeight;
 	int bodyX = floor(centerOfFaceBottomX - (bodyWidth / 2));
 	int bodyY = floor(faces.y + (1.5 * faceHeight));
 	int body2X = bodyX + bodyWidth;
@@ -353,4 +368,27 @@ double CalculateFacesMean(std::vector<Rect> &faces)
 	}
 
 	return (sum / faces.size());
+}
+
+Mat ResizeImageAspectRatio(Mat origImage, int newWidth, int newHeight)
+{
+	int origWidth = origImage.cols;
+	int origHeight = origImage.rows;
+
+	float origAspectRatio = (float)origWidth / (float)origHeight;
+	
+	if (newHeight == 0)
+	{
+		newHeight = newWidth / origAspectRatio;
+	}
+	else if (newWidth == 0)
+	{
+		newWidth = origAspectRatio * newHeight;
+	}
+
+	Size newSize(newWidth, newHeight);
+	Mat outImage;
+	resize(origImage, outImage, newSize);
+
+	return outImage;
 }

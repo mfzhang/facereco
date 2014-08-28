@@ -123,9 +123,11 @@ void filterComponents(IplImage * SWTImage,
                       std::vector<Point2dFloat> & compCenters,
                       std::vector<float> & compMedians,
                       std::vector<Point2d> & compDimensions,
-                      std::vector<std::pair<Point2d,Point2d> > & compBB );
+                      std::vector<std::pair<Point2d,Point2d> > & compBB,
+					  std::pair<cv::Point,cv::Point> facePair);
 
-std::vector<Chain> makeChains( IplImage * colorImage,
+std::vector<Chain> makeChains( IplImage * SWTImage,
+				IplImage * colorImage,
                  std::vector<std::vector<Point2d> > & components,
                  std::vector<Point2dFloat> & compCenters,
                  std::vector<float> & compMedians,
