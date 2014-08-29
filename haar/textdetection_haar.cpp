@@ -377,9 +377,10 @@ std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> textDetection (cv::M
   /// Reduce noise with a kernel 3x3
   cv::blur( srcGrayMat, edgeImageMat, cv::Size(3,3) );
 
-  cv::threshold(edgeImageMat, edgeImageMat, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
-  std::string threshName = (stepsDir + "\\_" + imageName + "_otsu.png");
-  imwrite(threshName.c_str(), edgeImageMat);
+  // removes small letters
+  //cv::threshold(edgeImageMat, edgeImageMat, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+  //std::string threshName = (stepsDir + "\\_" + imageName + "_otsu.png");
+  //imwrite(threshName.c_str(), edgeImageMat);
 
   /// Canny detector
   int lowThreshold = 50;
@@ -1036,15 +1037,20 @@ std::vector<Chain> makeChains( IplImage * SWTImage,
 
             if ( (largeMedian/smallMedian <= 2.0) && (largeHeight/smallHeight <= 2.0)) 
 			{
-                float dist = (compCenters[i].x - compCenters[j].x) * (compCenters[i].x - compCenters[j].x) +
-                             (compCenters[i].y - compCenters[j].y) * (compCenters[i].y - compCenters[j].y);
+				            
+                float distX = std::abs(compCenters[i].x - compCenters[j].x);
+                float distY = std::abs(compCenters[i].y - compCenters[j].y);
+				float dist = (compCenters[i].x - compCenters[j].x) * (compCenters[i].x - compCenters[j].x) +
+							 (compCenters[i].y - compCenters[j].y) * (compCenters[i].y - compCenters[j].y);
+				float heightDiff = std::abs(compDimensions[i].y - compDimensions[j].y);
                 float colorDist = (colorAverages[i].x - colorAverages[j].x) * (colorAverages[i].x - colorAverages[j].x) +
                                   (colorAverages[i].y - colorAverages[j].y) * (colorAverages[i].y - colorAverages[j].y) +
                                   (colorAverages[i].z - colorAverages[j].z) * (colorAverages[i].z - colorAverages[j].z);
-                if (dist < 5*(float)(std::max(std::min(compDimensions[i].x,compDimensions[i].y),std::min(compDimensions[j].x,compDimensions[j].y)))
-                    *(float)(std::max(std::min(compDimensions[i].x,compDimensions[i].y),std::min(compDimensions[j].x,compDimensions[j].y)))
-                    && 
-					colorDist < 2000) 
+				
+				if (distX < 3 * std::max(compDimensions[i].x, compDimensions[j].x) // make sure maximum distance between the centers are less than 3 * width of wider letter
+					&& distY < 0.4 * std::max(compDimensions[i].y, compDimensions[j].y)  // make sure maximum distance between the centers are less than 0.3 * width of height of letter
+					&& heightDiff < 0.15 * std::max(compDimensions[i].y, compDimensions[j].y)
+                    && colorDist < 3000) // make sure the colors dont vary too much
 				{
                     Chain c;
                     c.p = i;
@@ -1076,6 +1082,12 @@ std::vector<Chain> makeChains( IplImage * SWTImage,
         }
     }
     std::cout << chains.size() << " eligible pairs" << std::endl;
+
+	for (int i = 0; i<chains.size(); i++)
+	{
+		std::cout << "Chain" << i << " Components: " << chains.at(i).components.size() << " Dist: " << chains.at(i).dist << " P: " << chains.at(i).p << " Q: " << chains.at(i).q << std::endl;
+	}
+
     std::sort(chains.begin(), chains.end(), &chainSortDist);
 
 	IplImage * outputChainsPre =

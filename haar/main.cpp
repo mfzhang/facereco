@@ -113,7 +113,7 @@ void detectAndDisplay( Mat image, std::string imageName, bool darkOnLight )
 	}*/
 	if (((float)image.cols / (float)image.rows) < 1 )
 	{
-		image = ResizeImageAspectRatio(image, 0, 1000);
+		image = ResizeImageAspectRatio(image, 0, 1200);
 	}
 
 	cout << "Image size: width: " << image.cols << " height: " << image.rows << endl;
