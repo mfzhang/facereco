@@ -58,6 +58,11 @@ struct Point2d {
     float SWT;
 };
 
+struct PointDimension {
+    int width;
+    int height;
+};
+
 struct Point2dFloat {
     float x;
     float y;
@@ -75,10 +80,15 @@ struct Point3dFloat {
     float z;
 };
 
+struct PointCenter
+{
+	int index;
+	Point2dFloat compCenter;
+};
 
 struct Chain {
-    int p;
-    int q;
+    PointCenter p;
+    PointCenter q;
     float dist;
     bool merged;
     Point2dFloat direction;
@@ -122,7 +132,7 @@ void filterComponents(IplImage * SWTImage,
                       std::vector<std::vector<Point2d> > & validComponents,
                       std::vector<Point2dFloat> & compCenters,
                       std::vector<float> & compMedians,
-                      std::vector<Point2d> & compDimensions,
+					  std::vector<PointDimension> & compDimensions,
                       std::vector<std::pair<Point2d,Point2d> > & compBB,
 					  std::pair<cv::Point,cv::Point> facePair);
 
@@ -131,7 +141,7 @@ std::vector<Chain> makeChains( IplImage * SWTImage,
                  std::vector<std::vector<Point2d> > & components,
                  std::vector<Point2dFloat> & compCenters,
                  std::vector<float> & compMedians,
-                 std::vector<Point2d> & compDimensions,
+                 std::vector<PointDimension> & compDimensions,
                  std::vector<std::pair<Point2d,Point2d> > & compBB);
 
 #endif // TEXTDETECTION_H
