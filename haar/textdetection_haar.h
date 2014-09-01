@@ -144,4 +144,10 @@ std::vector<Chain> makeChains( IplImage * SWTImage,
                  std::vector<PointDimension> & compDimensions,
                  std::vector<std::pair<Point2d,Point2d> > & compBB);
 
+void filterChains( std::vector<std::vector<Point2d> > & components,
+                                                           std::vector<Chain> & chains,
+                                                           std::vector<std::pair<Point2d,Point2d> > & compBB,
+														   std::pair<cv::Point,cv::Point> facePair,
+                                                           std::vector<Chain> & filteredChains);
+
 #endif // TEXTDETECTION_H

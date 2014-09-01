@@ -500,6 +500,9 @@ std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> textDetection (cv::M
 		cvSaveImage ( chainsName.c_str(), output4);
 	}
 
+	std::vector<Chain> filteredChains;
+	filterChains(components, chains, compBB, facePair, filteredChains);
+
  //   IplImage * output5 =
  //           cvCreateImage ( cvGetSize ( input ), IPL_DEPTH_8U, 3 );
  //   cvCvtColor (output4, output5, CV_GRAY2RGB);
@@ -517,7 +520,7 @@ std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> textDetection (cv::M
     //std::vector<std::pair<CvPoint,CvPoint>> bbList;
 	std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> bbToOCRImageList;
 	std::string imagePath = stepsDir + "\\_" + imageName;
-	renderChainsWithBoxes ( SWTImage, validComponents, chains, compBB, output6, bbToOCRImageList, imagePath);
+	renderChainsWithBoxes ( SWTImage, validComponents, filteredChains, compBB, output6, bbToOCRImageList, imagePath);
 
 
 
@@ -830,10 +833,10 @@ void filterComponents(IplImage * SWTImage,
 			//compare with face scale
 			double faceScale = ((facePair.second.x - facePair.first.x) * (facePair.second.y - facePair.first.y));
 			float smallFaceRatio = 0.02;
-			float largeFaceRatio = 2;
+			float largeFaceRatio = 1.5;
 			double compArea = (width * length);
-			if ((width * length) < (faceScale * smallFaceRatio)
-				|| (width * length) > (faceScale * largeFaceRatio))
+			if (compArea < (faceScale * smallFaceRatio)
+				|| compArea > (faceScale * largeFaceRatio))
 			{
 				//std::cout << "[Filter - face scale] Component: " << compArea << " < " << (faceScale * smallFaceRatio) << " OR > " << (faceScale * largeFaceRatio) << std::endl;
 				continue;
@@ -1198,116 +1201,7 @@ std::vector<Chain> makeChains( IplImage * SWTImage,
 
 								merges++;
 
-                        }
-						
-        //                //if (chains[i].p == chains[j].p) {
-        //                    if (acos(chains[i].direction.x * -chains[j].direction.x + chains[i].direction.y * -chains[j].direction.y) < strictness) {
-
-								//std::cout << "merging i: " << i << " and j: " << j << std::endl;
-        //                        chains[i].p = chains[j].q;
-        //                        for (std::vector<int>::iterator it = chains[j].components.begin(); it != chains[j].components.end(); it++) {
-        //                            chains[i].components.push_back(*it);
-        //                        }
-        //                        float d_x = (compCenters[chains[i].p].x - compCenters[chains[i].q].x);
-        //                        float d_y = (compCenters[chains[i].p].y - compCenters[chains[i].q].y);
-        //                        chains[i].dist = d_x * d_x + d_y * d_y;
-
-        //                        float mag = sqrt(d_x*d_x + d_y*d_y);
-        //                        d_x = d_x / mag;
-        //                        d_y = d_y / mag;
-        //                        Point2dFloat dir;
-        //                        dir.x = d_x;
-        //                        dir.y = d_y;
-        //                        chains[i].direction = dir;
-        //                        chains[j].merged = true;
-        //                        merges++;
-        //                        /*j=-1;
-        //                        i=0;
-        //                        if (i == chains.size() - 1) i=-1;
-        //                        std::stable_sort(chains.begin(), chains.end(), &chainSortLength);*/
-        //                    }
-        //                //} else if (chains[i].p == chains[j].q) {
-        //                    else if (acos(chains[i].direction.x * chains[j].direction.x + chains[i].direction.y * chains[j].direction.y) < strictness) {
-
-								//std::cout << "merging i: " << i << " and j: " << j << std::endl;
-        //                        chains[i].p = chains[j].p;
-        //                        for (std::vector<int>::iterator it = chains[j].components.begin(); it != chains[j].components.end(); it++) {
-        //                            chains[i].components.push_back(*it);
-        //                        }
-        //                        float d_x = (compCenters[chains[i].p].x - compCenters[chains[i].q].x);
-        //                        float d_y = (compCenters[chains[i].p].y - compCenters[chains[i].q].y);
-        //                        float mag = sqrt(d_x*d_x + d_y*d_y);
-        //                        chains[i].dist = d_x * d_x + d_y * d_y;
-
-        //                        d_x = d_x / mag;
-        //                        d_y = d_y / mag;
-
-        //                        Point2dFloat dir;
-        //                        dir.x = d_x;
-        //                        dir.y = d_y;
-        //                        chains[i].direction = dir;
-        //                        chains[j].merged = true;
-        //                        merges++;
-        //                        /*j=-1;
-        //                        i=0;
-        //                        if (i == chains.size() - 1) i=-1;
-        //                        std::stable_sort(chains.begin(), chains.end(), &chainSortLength); */
-        //                    }
-        //                //} else if (chains[i].q == chains[j].p) {
-        //                    else if (acos(chains[i].direction.x * chains[j].direction.x + chains[i].direction.y * chains[j].direction.y) < strictness) {
-
-								//std::cout << "merging i: " << i << " and j: " << j << std::endl;
-        //                        chains[i].q = chains[j].q;
-        //                        for (std::vector<int>::iterator it = chains[j].components.begin(); it != chains[j].components.end(); it++) {
-        //                            chains[i].components.push_back(*it);
-        //                        }
-        //                        float d_x = (compCenters[chains[i].p].x - compCenters[chains[i].q].x);
-        //                        float d_y = (compCenters[chains[i].p].y - compCenters[chains[i].q].y);
-        //                        float mag = sqrt(d_x*d_x + d_y*d_y);
-        //                        chains[i].dist = d_x * d_x + d_y * d_y;
-
-
-        //                        d_x = d_x / mag;
-        //                        d_y = d_y / mag;
-        //                        Point2dFloat dir;
-        //                        dir.x = d_x;
-        //                        dir.y = d_y;
-
-        //                        chains[i].direction = dir;
-        //                        chains[j].merged = true;
-        //                        merges++;
-        //                        /*j=-1;
-        //                        i=0;
-        //                        if (i == chains.size() - 1) i=-1;
-        //                        std::stable_sort(chains.begin(), chains.end(), &chainSortLength); */
-        //                    }
-        //                //} else if (chains[i].q == chains[j].q) {
-        //                    else if (acos(chains[i].direction.x * -chains[j].direction.x + chains[i].direction.y * -chains[j].direction.y) < strictness) {
-
-								//std::cout << "merging i: " << i << " and j: " << j << std::endl;
-        //                        chains[i].q = chains[j].p;
-        //                        for (std::vector<int>::iterator it = chains[j].components.begin(); it != chains[j].components.end(); it++) {
-        //                            chains[i].components.push_back(*it);
-        //                        }
-        //                        float d_x = (compCenters[chains[i].p].x - compCenters[chains[i].q].x);
-        //                        float d_y = (compCenters[chains[i].p].y - compCenters[chains[i].q].y);
-        //                        chains[i].dist = d_x * d_x + d_y * d_y;
-
-        //                        float mag = sqrt(d_x*d_x + d_y*d_y);
-        //                        d_x = d_x / mag;
-        //                        d_y = d_y / mag;
-        //                        Point2dFloat dir;
-        //                        dir.x = d_x;
-        //                        dir.y = d_y;
-        //                        chains[i].direction = dir;
-        //                        chains[j].merged = true;
-        //                        merges++;
-        //                        /*j=-1;
-        //                        i=0;
-        //                        if (i == chains.size() - 1) i=-1;
-        //                        std::stable_sort(chains.begin(), chains.end(), &chainSortLength);*/
-        //                    }
-                        //}
+                        }						
                     }
                 }
             }
@@ -1332,4 +1226,45 @@ std::vector<Chain> makeChains( IplImage * SWTImage,
     chains = newchains;
     std::cout << chains.size() << " chains after merging" << std::endl;
     return chains;
+}
+
+void filterChains( std::vector<std::vector<Point2d> > & components,
+                                                           std::vector<Chain> & chains,
+                                                           std::vector<std::pair<Point2d,Point2d> > & compBB,
+														   std::pair<cv::Point,cv::Point> facePair,
+                                                           std::vector<Chain> & filteredChains)
+{
+	int count = 0;
+    for (std::vector<Chain>::iterator chainit = chains.begin(); chainit != chains.end(); chainit++) {
+        int minx = 99999;
+        int miny = 99999;
+        int maxx = 0;
+        int maxy = 0;
+        for (std::vector<int>::const_iterator cit = chainit->components.begin(); cit != chainit->components.end(); cit++) {
+                miny = std::min(miny,compBB[*cit].first.y);
+                minx = std::min(minx,compBB[*cit].first.x);
+                maxy = std::max(maxy,compBB[*cit].second.y);
+                maxx = std::max(maxx,compBB[*cit].second.x);
+        }
+
+        CvPoint p0 = cvPoint(minx,miny);
+        CvPoint p1 = cvPoint(maxx,maxy);
+        
+		//compare with face scale
+		double faceScale = ((facePair.second.x - facePair.first.x) * (facePair.second.y - facePair.first.y));
+		float smallFaceRatio = 0.2;
+		float largeFaceRatio = 1.5;
+		double compArea = (maxx - minx) * (maxy - miny);
+		if (compArea < (faceScale * smallFaceRatio)
+			|| compArea > (faceScale * largeFaceRatio))
+		{
+			//std::cout << "[Filter - face scale] Component: " << compArea << " < " << (faceScale * smallFaceRatio) << " OR > " << (faceScale * largeFaceRatio) << std::endl;
+			continue;
+		}
+		else
+		{
+			filteredChains.push_back(chains.at(count));
+		}
+		count++;
+    }
 }
