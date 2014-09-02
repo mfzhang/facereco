@@ -43,6 +43,8 @@
 #include <utility>
 #include <algorithm>
 #include <vector>
+#include <stdlib.h>
+#include <stdio.h>
 #include "textdetection_haar.h"
 
 #define PI 3.14159265
@@ -349,6 +351,7 @@ void renderChains (IplImage * SWTImage,
 std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> textDetection (cv::Mat matInput, std::string stepsDir, std::string imageName, bool dark_on_light, std::pair<cv::Point,cv::Point> facePair)
 {
 	bool showCanny = true;
+	bool showContours = true;
 	bool showGradient = false;
 	bool showSWT = true;
 	bool showComponents = true;
@@ -359,7 +362,7 @@ std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> textDetection (cv::M
 	stepsDirGlobal = stepsDir;
 	imageNameGlobal = imageName;
 
-    std::cout << "Running textDetection with dark_on_light " << dark_on_light << std::endl;
+	std::cout << "Running textDetection with dark_on_light " << dark_on_light << std::endl;
 
 
 
@@ -369,32 +372,58 @@ std::vector<std::pair<std::pair<CvPoint,CvPoint>, cv::Mat>> textDetection (cv::M
 	//assert ( input->depth == IPL_DEPTH_8U );
 	//assert ( input->nChannels == 3 );
   
-  // NEW VERSION
-  // Convert to Gray
-  cv::Mat srcGrayMat, edgeImageMat;
-  cvtColor( matInput, srcGrayMat, CV_BGR2GRAY );
+	// NEW VERSION
+	// Convert to Gray
+	cv::Mat srcGrayMat, edgeImageMat;
+	cvtColor( matInput, srcGrayMat, CV_BGR2GRAY );
 
-  /// Reduce noise with a kernel 3x3
-  cv::blur( srcGrayMat, edgeImageMat, cv::Size(3,3) );
+	/// Reduce noise with a kernel 3x3
+	cv::blur( srcGrayMat, edgeImageMat, cv::Size(3,3) );
 
-  // removes small letters
-  //cv::threshold(edgeImageMat, edgeImageMat, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
-  //std::string threshName = (stepsDir + "\\_" + imageName + "_otsu.png");
-  //imwrite(threshName.c_str(), edgeImageMat);
+	// removes small letters
+	//cv::threshold(edgeImageMat, edgeImageMat, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU);
+	//std::string threshName = (stepsDir + "\\_" + imageName + "_otsu.png");
+	//imwrite(threshName.c_str(), edgeImageMat);
 
-  /// Canny detector
-  int lowThreshold = 50;
-  int ratio = 3;
-  int kernel_size = 3;
-  Canny(edgeImageMat, edgeImageMat, lowThreshold, lowThreshold*ratio, kernel_size );
+	/// Canny detector
+	int lowThreshold = 50;
+	int ratio = 3;
+	int kernel_size = 3;
+	Canny(edgeImageMat, edgeImageMat, lowThreshold, lowThreshold*ratio, kernel_size );
 
-  if (showCanny)
-  {
-	  std::string cannyName = (stepsDir + "\\_" + imageName + "_a.png");
-	  imwrite(cannyName.c_str(), edgeImageMat);
-  }
+	if (showCanny)
+	{
+		std::string cannyName = (stepsDir + "\\_" + imageName + "_a.png");
+		imwrite(cannyName.c_str(), edgeImageMat);
+	}
 
-	IplImage* edgeImage = &edgeImageMat.operator IplImage();
+	std::vector<std::vector<cv::Point> > contours;
+	std::vector<cv::Vec4i> hierarchy;
+
+	// use contours to find the length of each segment
+	findContours(edgeImageMat, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_NONE, cv::Point(0,0));
+	cv::Mat contoursImageMat = cv::Mat::zeros( edgeImageMat.size(), CV_8UC1 );
+
+	for( size_t i = 0; i< contours.size(); i++ )
+	{
+		if (hierarchy[i][2] > -1 || contours.at(i).size() > 35) // if contour does have a child, draw it
+		{
+			/*Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );*/
+			drawContours( contoursImageMat, contours, (int)i, cv::Scalar(255,255,255), 1, 8, hierarchy, 0, cv::Point() );
+		}
+	}
+
+	//cv::Mat finalEdgeImage = cv::Mat::zeros( edgeImageMat.size(), CV_8UC1 );;
+	//edgeImageMat.copyTo( finalEdgeImage, contoursImageMat);
+	cv::threshold(contoursImageMat, contoursImageMat, 0, 255, CV_THRESH_BINARY);
+
+	if (showContours)
+	{
+		std::string contoursName = (stepsDir + "\\_" + imageName + "_a-contours.png");
+		imwrite(contoursName.c_str(), contoursImageMat);
+	}
+
+	IplImage* edgeImage = &contoursImageMat.operator IplImage();
 	IplImage* grayImage = &srcGrayMat.operator IplImage();
 
     // Create gradient X, gradient Y

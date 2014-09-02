@@ -18,5 +18,8 @@
     <ClCompile Include="canny.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="mser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
